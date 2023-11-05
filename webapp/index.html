@@ -1,0 +1,170 @@
+<html>
+    <head>
+        <title>Study Time MGR</title>
+        <meta charset="utf-8">
+        <link href="/style.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta property="og:title" content="Study Time MGR">
+        <meta property="og:description" content="Load data and display tables and graphs">
+        <meta property="twitter:description" content="Load data and display tables and graphs">
+        <meta property="description" content="Load data and display tables and graphs">
+        <meta name="twitter:card" content="summary">
+        <meta name="twitter:site" content="@bem130">
+        <meta name="application-name" content="Study Time MGR">
+    </head>
+    <body lang="">
+        [*header]
+        <div class="main">
+            <div class="sidebar">
+                <h1>Study Time MGR</h1>
+            </div>
+            <main>
+                <h1>
+                    Study Time MGR
+                </h1>
+                <div>
+                    URL: <input type="url" id="geturl">
+                    <button onclick="getData()">GET</button>
+                </div>
+                <div>
+                    Raw:
+                    <textarea id="rawdata"></textarea>
+                </div>
+                <div>
+                    Table:
+                    <table id="parseddata"></table>
+                </div>
+            </main>
+        </div>
+        [*footer]
+    </body>
+</html>
+<script>
+    function parsedata() {
+        let subjects = [];
+        let res = [];
+        let st = sessionStorage.studytime.split(/\r\n|\n|;/);
+        for (let a of st) {
+            let sa = a.split(",");
+            for (let i=1;i<sa.length;i++) {
+                let subjectname = sa[i].slice(0,2);
+                if (subjects.indexOf(subjectname)==-1) {
+                    subjects.push(subjectname);
+                }
+            }
+        }
+        console.log(subjects)
+        for (let a of st) {
+            let sa = a.split(",");
+            let value = 0;
+            let det = Array(subjects.length).fill(0);
+            for (let i=1;i<sa.length;i++) {
+                let subjectname = sa[i].slice(0,2);
+                let thisnum = Number(sa[i].slice(2).split(" ")[0]);
+                value += thisnum;
+                det[ subjects.indexOf(subjectname) ] += thisnum;
+            }
+            res.push([Date.parse(sa[0].replace(/\./g,"-").valueOf()),value,det]);
+        }
+        console.log("day")
+        console.table(res)
+        return [res,subjects];
+    }
+</script>
+<script>
+    let rawdataelm = document.getElementById("rawdata");
+
+    //console.log(sessionStorage);
+    if (sessionStorage.studytime!=null) {
+        rawdataelm.value = sessionStorage.studytime;
+        showtableandgraph();
+    }
+
+    //fetch("https://apn1-epic-monarch-33547.upstash.io/get/studytime?_token=AYMLASQgMmQwMzVkZTUtOWU5NS00ZWQ4LThiNzMtM2YwYjc2YzlmYmFiMTQxNzhkNTk0ODk5NDIxYjk3MmY4MjJjOTVhMjY4ZjU=").then(data => console.log(data));
+    async function getData() {
+        let geturl = document.getElementById("geturl").value;
+        let res = await fetch(geturl);
+        let data = await res.text();
+        try {
+            data = JSON.parse(data).result;
+        } catch{}
+        console.log(data)
+        sessionStorage.studytime = data;
+        rawdataelm.value = sessionStorage.studytime;
+        showtableandgraph();
+    }
+
+    function showtableandgraph() {
+        let pdata = parsedata();
+        showtable(pdata);
+    }
+
+    function showtable(pdata) {
+        // console.log("pdata")
+        // console.log(pdata)
+        let tableelm = document.getElementById("parseddata");
+        tableelm.innerHTML = "";
+        tableelm.cellSpacing = 0;
+        let thead = document.createElement("thead");
+        let theadtr = document.createElement("tr");
+        let th1 = document.createElement("th");
+        th1.innerText = "期間";
+        theadtr.appendChild(th1);
+        let th2 = document.createElement("th");
+        th2.innerText = "合計";
+        theadtr.appendChild(th2);
+        for (let s=0;s<pdata[1].length;s++) {
+            let th = document.createElement("th");
+            th.innerText = pdata[1][s];
+            theadtr.appendChild(th);
+        }
+        thead.appendChild(theadtr);
+        tableelm.appendChild(thead);
+        let tbody = document.createElement("tbody");
+        for (let i=pdata[0].length-1;i>=0;i--) {
+            let tr = document.createElement("tr");
+            //console.log(pdata[0][i])
+            let td1 = document.createElement("td");
+            td1.innerText = new Date(pdata[0][i][0]).toLocaleString('ja-JP',{year:"numeric",month:"2-digit",day:"2-digit"});
+            tr.appendChild(td1);
+            let td2 = document.createElement("td");
+            td2.innerText = pdata[0][i][1];
+            tr.appendChild(td2);
+            for (let s=0;s<pdata[1].length;s++) {
+                let td = document.createElement("td");
+                td.innerText = pdata[0][i][2][s];
+                tr.appendChild(td);
+            }
+            // let td3 = document.createElement("td");
+            // td3.innerText = pdata[0][i][4][0];
+            // tr.appendChild(td3);
+            // let td4 = document.createElement("td");
+            // td4.innerText = pdata[0][i][4][1];
+            // tr.appendChild(td4);
+            tbody.appendChild(tr);
+        }
+        tableelm.appendChild(tbody);
+        return tableelm;
+    }
+</script>
+<style>
+    body {
+        margin: 0;
+    }
+    #geturl {
+        min-width: 30%;
+        max-width: 1000px;
+    }
+    table {
+        border: 1px solid rgba(128,128,128,1);
+        width: fit-content;
+        margin: 5px;
+    }
+    table th, table td {
+        padding: 3px;
+        border: 1px solid rgba(128,128,128,0.5);
+    }
+    table th {
+        border-bottom: 1px solid rgba(128,128,128,1);
+    }
+</style>

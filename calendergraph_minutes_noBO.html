@@ -1,0 +1,265 @@
+<!-- bem130 -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <div id="graphes">
+            <img id="graph1"></img>
+            <img id="graph2"></img>
+            <img id="graph3"></img>
+        </div>
+    </body>
+</html>
+<script>
+let data = "";
+
+async function getSSize() {
+    articleRes1 = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
+    data1 = await articleRes1.text();
+    articleRes2 = await fetch(`bem130.sleeptime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
+    data2 = await articleRes2.text();
+    data = data1 + "\n" + data2
+    let data_g1 = getdata_g1();
+    document.getElementById("graph1").src = showImage_calender1(data_g1[0],data_g1[2]);
+    document.getElementById("graph2").src = showImage_calender2(data_g1[0],data_g1[2]);
+   // document.getElementById("graph3").src = showImage_calender3(data_g1[0]);
+}
+getSSize();
+
+
+
+function getdata_g1() {
+    let subjects = ["睡眠","数学","英語","国語"];
+    let res = [];
+    let st = data.replace(/\r/g,"").split("\n");
+    let day_span = [Number.MAX_VALUE,0]; // [start,end]
+    for (let a of st) {
+        let sa = a.split(",");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjects.indexOf(subjectname)==-1) {
+                subjects.push(subjectname);
+            }
+        }
+    }
+    console.log(subjects)
+    for (let a of st) {
+        let sa = a.split(",");
+        let value = 0;
+        let det = Array(subjects.length).fill(0);
+        let day_ = sa[0].replace(/\./g,"-");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+
+            let timed = sa[i].slice(2).split(" ")[0];
+            let props = sa[i].slice(2).split(" ").slice(1)
+            let range=0;
+            if (timed[0]=="[") {
+                for (let timed_ of timed.slice(1,-1).split("|")) {
+                    let startend = timed_.split("~");
+                    console.log(subjectname,subjects.indexOf(subjectname),day_,Date.parse(day_)/(1000*3600*24),startend,(Date.parse(`${day_} ${startend[0]}`)-Date.parse(`${day_} 0:00`))/(1000*60),(Date.parse(`${day_} ${startend[1]}`)-Date.parse(`${day_} 0:00`))/(1000*60),props)
+                    if ((Date.parse(`${day_} ${startend[0]}`)-Date.parse(`${day_} 0:00`))/(1000*60)>(Date.parse(`${day_} ${startend[1]}`)-Date.parse(`${day_} 0:00`))/(1000*60)) {
+                        throw `error 終了時刻が開始時刻よりも早い`
+                    }
+                    res.push([subjects.indexOf(subjectname),Date.parse(day_)/(1000*3600*24),(Date.parse(`${day_} ${startend[0]}`)-Date.parse(`${day_} 0:00`))/(1000*60),(Date.parse(`${day_} ${startend[1]}`)-Date.parse(`${day_} 0:00`))/(1000*60),props])
+                    if (Date.parse(day_)/(1000*3600*24)<day_span[0]) { day_span[0] = Date.parse(day_)/(1000*3600*24) }
+                    if (Date.parse(day_)/(1000*3600*24)>day_span[1]) { day_span[1] = Date.parse(day_)/(1000*3600*24) }
+                }
+            }
+        }
+    }
+    console.log("day")
+    console.table(res)
+    console.log(day_span)
+    return [res,subjects,day_span];
+}
+
+function showImage_calender1(data,span) {
+
+    let daywidth = 30
+
+    let w = (span[1]-span[0]+1)*daywidth;
+    let co = document.createElement("canvas");
+    co.height = 60*24;co.width = w;
+
+
+    let iarr = new Uint8ClampedArray(60*24*(w)*4)
+    for (let iy = 0; iy < 60*24; iy++) {
+        for (let ix = 0; ix < w; ix++) {
+            let index = (iy*(w)+ix)*4; // index of position [ix,iy]
+            iarr[index+0] = 0; // Red
+            iarr[index+1] = 0; // Green
+            iarr[index+2] = 0; // Blue
+            iarr[index+3] = 0; // Alpha
+        }
+    }
+
+    // 掛線
+    for (let h=60;h<60*24;h+=60) {
+        for (let iw=0;iw<w;iw++) {
+            let index = (h*(w)+iw)*4
+            iarr[index+0] = 255
+            iarr[index+1] = 255
+            iarr[index+2] = 255
+            iarr[index+3] = 120
+        }
+    }
+
+    // データ
+    for (let i of data) {
+        console.log(i)
+        if (i[0]==0) {continue;} // 睡眠を無視
+        for (let j=i[2];j<i[3];j++) {
+            for (let d=0;d<daywidth;d++) {
+                let index = (j*(w)+(i[1]-span[0])*daywidth+d)*4
+                iarr[index+0] = 0
+                iarr[index+1] = 255
+                iarr[index+2] = 70
+                iarr[index+3] = 255
+            }
+        }
+    }
+
+    console.log(iarr)
+    co.getContext('2d').putImageData(new ImageData(iarr,w,60*24),0,0);
+    return co.toDataURL('image/png');
+}
+
+
+let colors = [[100,100,100], [0,255,0],[255,0,0],[0,0,255],[255,255,180],[176,255,255],[255,240,255],[255,230,245] ,[210,250,150],[200,250,210],[230,230,238],[250,229,200],[210,190,230],[176,230,217],[200,245,255],[213,220,210],[200,250,200],[220,195,235],[198,215,242],[230,223,350],[0,0,0],[255,255,255],[255,255,250],[245,255,240],[205,150,100]]
+function showImage_calender2(data,span) {
+
+    let daywidth = 30
+
+    let w = (span[1]-span[0]+1)*daywidth;
+    let co = document.createElement("canvas");
+    co.height = 60*24;co.width = w;
+
+
+    let iarr = new Uint8ClampedArray(60*24*(w)*4)
+    for (let iy = 0; iy < 60*24; iy++) {
+        for (let ix = 0; ix < w; ix++) {
+            let index = (iy*(w)+ix)*4; // index of position [ix,iy]
+            iarr[index+0] = 0; // Red
+            iarr[index+1] = 0; // Green
+            iarr[index+2] = 0; // Blue
+            iarr[index+3] = 0; // Alpha
+        }
+    }
+
+    // 掛線
+    for (let h=60;h<60*24;h+=60) {
+        for (let iw=0;iw<w;iw++) {
+            let index = (h*(w)+iw)*4
+            iarr[index+0] = 255
+            iarr[index+1] = 255
+            iarr[index+2] = 255
+            iarr[index+3] = 120
+        }
+    }
+
+    // データ
+    for (let i of data) {
+      //  console.log(i)
+        for (let j=i[2];j<i[3];j++) {
+            for (let d=0;d<daywidth;d++) {
+                let index = (j*(w)+(i[1]-span[0])*daywidth+d)*4
+                iarr[index+0] = colors[i[0]][0]
+                iarr[index+1] = colors[i[0]][1]
+                iarr[index+2] = colors[i[0]][2]
+                iarr[index+3] = 255
+            }
+        }
+    }
+
+    console.log(iarr)
+    co.getContext('2d').putImageData(new ImageData(iarr,w,60*24),0,0);
+    return co.toDataURL('image/png');
+}
+
+function showImage_calender3(data) {
+    console.log(data[data.length-1][1]-data[0][1])
+
+    let daywidth = 30
+
+    let w = (data[data.length-1][1]-data[0][1]+1)*daywidth;
+    let co = document.createElement("canvas");
+    co.height = 60*24;co.width = w;
+
+
+    let iarr = new Uint8ClampedArray(60*24*(w)*4)
+    for (let iy = 0; iy < 60*24; iy++) {
+        for (let ix = 0; ix < w; ix++) {
+            let index = (iy*(w)+ix)*4; // index of position [ix,iy]
+            iarr[index+0] = 0; // Red
+            iarr[index+1] = 0; // Green
+            iarr[index+2] = 0; // Blue
+            iarr[index+3] = 0; // Alpha
+        }
+    }
+
+    // 掛線
+    for (let h=60;h<60*24;h+=60) {
+        for (let iw=0;iw<w;iw++) {
+            let index = (h*(w)+iw)*4
+            iarr[index+0] = 255
+            iarr[index+1] = 255
+            iarr[index+2] = 255
+            iarr[index+3] = 120
+        }
+    }
+
+    // データ
+    for (let i of data) {
+      //  console.log(i)
+        for (let j=i[2];j<i[3];j++) {
+            for (let d=0;d<daywidth;d++) {
+                let index = (j*(w)+(i[1]-data[0][1])*daywidth+d)*4
+                if (i[4].includes("自宅")) {
+                    iarr[index+0] = 0
+                    iarr[index+1] = 255
+                    iarr[index+2] = 0
+                    iarr[index+3] = 255
+                }
+                else if (i[4].includes("学校")) {
+                    iarr[index+0] = 0
+                    iarr[index+1] = 0
+                    iarr[index+2] = 255
+                    iarr[index+3] = 255
+                }
+            }
+        }
+    }
+
+    console.log(iarr)
+    co.getContext('2d').putImageData(new ImageData(iarr,w,60*24),0,0);
+    return co.toDataURL('image/png');
+}
+
+</script>
+<style>
+    body {
+        margin: 0;
+        background-color: black;
+    }
+    #table3 {
+        border: 1px solid black;
+        width: fit-content;
+        margin: 5px;
+    }
+    #table3 th, #table3 td {
+        padding: 1px;
+        border: 1px solid rgb(210, 210, 210);
+    }
+    #table3 th {
+        border-bottom: 1px solid black;
+    }
+    img {
+        image-rendering: pixelated;
+        border: 1px solid white;
+        padding: 10px;
+    }
+</style>

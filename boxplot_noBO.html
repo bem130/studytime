@@ -1,0 +1,315 @@
+<!-- bem130 -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <div id="graphes">
+            <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output7" class="svg"></svg>
+            <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output14" class="svg"></svg>
+            <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output30" class="svg"></svg>
+            <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output60" class="svg"></svg>
+            <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output120" class="svg"></svg>
+        </div>
+    </body>
+</html>
+<script>
+let data = "";
+
+async function getSSize() {
+    articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
+    data = await articleRes.text();
+    let args = {};
+    let gsizes = {"pc":[1920,1080,0.24],"a4":[594*2,420*2,0.18],"pc_":[1080,1920,0.4],"a4_":[420*2,594*2,0.26],"pcwide":[1920*2,1080,0.24]};
+    args.data_g1 = getdata_g1();
+    args.gsize = gsizes["pcwide"]; // resolution
+    wrap_showImg(args,7,1);
+    wrap_showImg(args,14,1);
+    wrap_showImg(args,30,1);
+    wrap_showImg(args,60,1);
+    wrap_showImg(args,120,1);
+}
+getSSize();
+
+function wrap_showImg(args,n,s) {
+    let data_g2 = getdata_g6(args.data_g1,n);
+    showImage_g1(data_g2,[...args.gsize,args.gsize[2]*s],document.getElementById(`output${n}`),n);
+}
+
+function getdata_g1() {
+    let subjects = [];
+    let res = [];
+    let st = data.replace(/\r/g,"").split("\n");
+    for (let a of st) {
+        let sa = a.split(",");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjects.indexOf(subjectname)==-1) {
+                subjects.push(subjectname);
+            }
+        }
+    }
+    console.log(subjects)
+    for (let a of st) {
+        let sa = a.split(",");
+        let value = 0;
+        let det = Array(subjects.length).fill(0);
+        let day_ = sa[0].replace(/\./g,"-");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+
+            let timed = sa[i].slice(2).split(" ")[0];
+            let range=0;
+            if (timed[0]=="[") {
+                for (let timed_ of timed.slice(1,-1).split("|")) {
+                    let startend = timed_.split("~");
+                    range += (Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60;
+                    //console.log(timed_,(Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60)
+                }
+            }
+            else { range = Number(timed); }
+
+            value += range;
+            det[ subjects.indexOf(subjectname) ] += range;
+        }
+        res.push([Date.parse(day_),value,det]);
+    }
+    console.log("day")
+    console.table(res)
+    return [res,subjects];
+}
+function getdata_g6(data_g1,N=14) { // 箱ひげ図
+    console.log(data_g1)
+    let subjects = data_g1[1];
+    let ddata = data_g1[0];
+    let res = Array(ddata.length).fill(null).map(()=>{return [null,[],[]]}); // [ 起算日 日毎(ソート済) 日毎(ソート済) 箱ひげ[Q0,Q1,Q2,Q3,Q4] ] ]
+    console.log(res)
+    //
+    for (let i=0;i<N;i++) {
+        res[i][0] = ddata[i][0]; // 起算日
+        for (let c=0;c<N;c++) {
+            if (i-c<0) {break;}
+            res[i][1].unshift(ddata[i-c][1]); // 日毎
+        }
+        {
+            res[i][2] = res[i][1].map((x)=>{return x;}).sort((a,b)=>{return a-b;});
+            res[i][3] = quartile(res[i][2]);
+        }
+    }
+    for (let i=N;i<ddata.length;i++) {
+        res[i][0] = ddata[i][0]; // 起算日
+        for (let c=0;c<N;c++) {
+            res[i][1].unshift(ddata[i-c][1]); // 日毎
+        }
+        {
+            res[i][2] = res[i][1].map((x)=>{return x;}).sort((a,b)=>{return a-b;});
+            res[i][3] = quartile(res[i][2]);
+        }
+    }
+    console.log("res",res)
+    return [res,subjects]
+}
+function quartile(x) { // require sorted array
+    let ret = Array(5);
+    ret[0] = x[0];
+    ret[4] = x[x.length-1];
+    ret[2] = median(x);
+    ret[1] = median( x.filter((x)=>{return x<ret[2]}) )
+    ret[3] = median( x.filter((x)=>{return x>ret[2]}) )
+    return ret;
+}
+function median(x) {
+    if(x.length%2==0){
+        return (x[x.length/2-1]+x[x.length/2])/2;
+    }else{
+        return x[(x.length-1)/2]
+    }
+}
+
+    let setting = {}
+    let colors = [ [0,255,0],[255,0,0],[0,0,255],[255,255,180],[176,255,255],[255,240,255],[255,230,245] ,[210,250,150],[200,250,210],[230,230,238],[250,229,200],[210,190,230],[176,230,217],[200,245,255],[213,220,210],[200,250,200],[220,195,235],[198,215,242],[230,223,350],[0,0,0],[255,255,255],[255,255,250],[245,255,240]]
+function showImage_g1(sdata,prop,svgelm,n) {
+
+    svgelm.setAttributeNS(null,"width",prop[0])
+    svgelm.setAttributeNS(null,"height",prop[1])
+
+    let subjects = sdata[1];
+    let data = sdata[0];
+    let minvalue = 0;
+    let tspan = data[data.length-1][0]-data[0][0]+3600*24*1000;
+    let scale = prop[3];
+    //console.log("prop",prop)
+    let ddata = Array(data.length).map(()=>{return [0,0]})
+    for (let i=0;i<data.length;i++) {
+        ddata[i] = [(data[i][0]-data[0][0])*prop[0]/tspan,prop[1]-((data[i][1]-minvalue)*10*scale)];
+    }
+    //
+    for (let i=0;i<data.length;i++) {
+        let date = new Date(data[i][0])
+        {
+            let rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+            rect.setAttributeNS(null,"fill",`rgb(${((date.getDay()+6)%7)*10},${((date.getMonth())%2)*30},${((date.getMonth()+1)%2)*30})`);
+            rect.setAttributeNS(null,"x",(data[i][0]-data[0][0])*prop[0]/tspan);
+            rect.setAttributeNS(null,"y",20);
+            rect.setAttributeNS(null,"width",(3600*24*1000)*prop[0]/tspan);
+            rect.setAttributeNS(null,"height",prop[1]-20);
+            svgelm.appendChild(rect);
+        }
+        {
+            let rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+            rect.setAttributeNS(null,"fill",`rgb(${(date.getFullYear()%3)*100+50},${(date.getFullYear()%4)*50+50},${(date.getFullYear()%2)*200+50})`);
+            rect.setAttributeNS(null,"x",(data[i][0]-data[0][0])*prop[0]/tspan);
+            rect.setAttributeNS(null,"y",0);
+            rect.setAttributeNS(null,"width",(3600*24*1000)*prop[0]/tspan);
+            rect.setAttributeNS(null,"height",10);
+            svgelm.appendChild(rect);
+        }
+    }
+
+    // 掛線の描画
+    let line_span = 2;
+    for (let i=0;(i*line_span)*10*scale<prop[1];i+=1) {
+        let patht = `M 0 ${prop[1]-((i*line_span)*10*scale)} L ${prop[0]} ${prop[1]-((i*line_span)*10*scale)}`;
+        let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+        path.setAttributeNS(null,"d",patht);
+        path.setAttributeNS(null,"fill","none");
+        path.setAttributeNS(null,"stroke",`rgb(70,80,80)`);
+        path.setAttributeNS(null,"stroke-width",(i*line_span%10)==0 ? ( ((i*line_span%60)==0 ? 5 : 2) ) : 1);
+        svgelm.appendChild(path);
+    }
+    // データ2の描画
+    for (let i=0;i<data.length;i++) {
+        //let bf = [0,0];
+        // for (let s=0;s<subjects.length;s++) {
+        //     let patht = `M ${(data[i+1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((bf[1]-minvalue)*10*scale)}`;
+        //     patht += `L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((bf[0]-minvalue)*10*scale)}`;
+        //     bf[0] += data[i][2][s];
+        //     bf[1] += data[i+1][2][s];
+        //     patht += `L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((bf[0]-minvalue)*10*scale)}`
+        //     patht += `L ${(data[i+1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((bf[1]-minvalue)*10*scale)}`
+        //     let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+        //     path.setAttributeNS(null,"d",patht);
+        //     if (i>n) { path.setAttributeNS(null,"fill",`rgb(${colors[s][0]},${colors[s][1]},${colors[s][2]})`); }
+        //     else { path.setAttributeNS(null,"fill",`rgb(${colors[s][0]*0.4},${colors[s][1]*0.4},${colors[s][2]*0.4})`); }
+        //     path.setAttributeNS(null,"stroke",`none`);
+        //     path.setAttributeNS(null,"stroke-width",`2`);
+        //     svgelm.appendChild(path);
+        // }
+        console.log(data[i][3])
+        {
+            let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][0]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][1]-minvalue)*10*scale)}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+                if (i>n) { path.setAttributeNS(null,"stroke",`rgb(255,0,0)`); }
+                else { path.setAttributeNS(null,"stroke",`rgb(100,0,0)`); }
+            path.setAttributeNS(null,"stroke-width",`3`);
+            svgelm.appendChild(path);
+        }
+        {
+            let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][1]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][2]-minvalue)*10*scale)}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+                if (i>n) { path.setAttributeNS(null,"stroke",`rgb(255,0,255)`); }
+                else { path.setAttributeNS(null,"stroke",`rgb(100,0,100)`); }
+            path.setAttributeNS(null,"stroke-width",`8`);
+            svgelm.appendChild(path);
+        }
+        {
+            let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][2]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][3]-minvalue)*10*scale)}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+                if (i>n) { path.setAttributeNS(null,"stroke",`rgb(255,255,0)`); }
+                else { path.setAttributeNS(null,"stroke",`rgb(100,100,0)`); }
+            path.setAttributeNS(null,"stroke-width",`8`);
+            svgelm.appendChild(path);
+        }
+        {
+            let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][3]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][4]-minvalue)*10*scale)}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+                if (i>n) { path.setAttributeNS(null,"stroke",`rgb(0,255,255)`); }
+                else { path.setAttributeNS(null,"stroke",`rgb(0,100,100)`); }
+            path.setAttributeNS(null,"stroke-width",`3`);
+            svgelm.appendChild(path);
+        }
+
+        let hbs = 3;
+        {
+            let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan-hbs} ${prop[1]-((data[i][3][0]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan+hbs} ${prop[1]-((data[i][3][0]-minvalue)*10*scale)}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+                if (i>n) { path.setAttributeNS(null,"stroke",`rgb(255,255,255)`); }
+                else { path.setAttributeNS(null,"stroke",`rgb(100,100,100)`); }
+            path.setAttributeNS(null,"stroke-width",`3`);
+            svgelm.appendChild(path);
+        }
+        {
+            let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan-hbs} ${prop[1]-((data[i][3][4]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan+hbs} ${prop[1]-((data[i][3][4]-minvalue)*10*scale)}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+                if (i>n) { path.setAttributeNS(null,"stroke",`rgb(255,255,255)`); }
+                else { path.setAttributeNS(null,"stroke",`rgb(100,100,100)`); }
+            path.setAttributeNS(null,"stroke-width",`3`);
+            svgelm.appendChild(path);
+        }
+    }
+
+    // 目盛
+    
+    for (let i=10;(i*line_span)*10*scale<prop[1];i+=10) {
+        let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+        label.setAttributeNS(null,"x",5);
+        label.setAttributeNS(null,"y",prop[1]-((i*line_span)*10*scale) +10);
+        label.setAttributeNS(null,"font-size",20);
+        label.setAttributeNS(null,"fill",`rgb(255,255,255)`);
+        label.innerHTML = `${i*2}分`
+        svgelm.appendChild(label);
+    }
+    // for (let i=12;i<data.length;i+=10) {
+    //     let date = new Date(data[i][0])
+    //     let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+    //     label.setAttributeNS(null,"x",(data[i][0]-data[0][0])*prop[0]/tspan);
+    //     label.setAttributeNS(null,"y",40);
+    //     label.setAttributeNS(null,"fill",`rgb(255,255,255)`);
+    //     label.setAttributeNS(null,"font-size",20);
+    //     label.innerHTML = `${date.getMonth()+1}/${date.getDate()}`
+    //     svgelm.appendChild(label);
+    // }
+
+    // タイトル
+    {
+        let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+        label.setAttributeNS(null,"x",60);
+        label.setAttributeNS(null,"y",70);
+        label.setAttributeNS(null,"font-size",50);
+        label.setAttributeNS(null,"fill",`rgb(255,255,255)`);
+        label.innerHTML = `Moving BOX PLOT n=${n}`
+        svgelm.appendChild(label);
+    }
+}
+</script>
+<style>
+    body {
+        margin: 0;
+    }
+    #table3 {
+        border: 1px solid black;
+        width: fit-content;
+        margin: 5px;
+    }
+    #table3 th, #table3 td {
+        padding: 1px;
+        border: 1px solid rgb(210, 210, 210);
+    }
+    #table3 th {
+        border-bottom: 1px solid black;
+    }
+</style>

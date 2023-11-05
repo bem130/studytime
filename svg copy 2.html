@@ -1,0 +1,244 @@
+<!-- bem130 -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <div id="graphes">
+            <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output" class="svg"></svg>
+        </div>
+    </body>
+</html>
+<script>
+let data = "";
+
+async function getSSize() {
+    articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
+    data = await articleRes.text();
+    let gsizes = {"pc":[1920,1080],"a4":[297*5,210*5],"pc_":[1080,1920]}
+    gsize = "a4"
+    let data_g1 = getdata_g1();
+    showImage_g1(data_g1,[...gsizes[gsize],0.24]);
+}
+getSSize();
+
+
+function lsmline(d) {
+    // 参考 https://ja.wikipedia.org/wiki/%E6%9C%80%E5%B0%8F%E4%BA%8C%E4%B9%97%E6%B3%95
+    let n = d.length;
+    let sk_xy = 0;let sk_x = 0;let sk_y = 0;let sk_x2 = 0;
+    for (let k=0;k<n;k++) { sk_xy += d[k][0]*d[k][1];sk_x += d[k][0];sk_y += d[k][1];sk_x2 += d[k][0]**2; }
+    let a = (n*sk_xy-sk_x*sk_y)/(n*sk_x2-sk_x**2); let b = (sk_x2*sk_y-sk_xy*sk_x)/(n*sk_x2-sk_x**2);
+    return [a,b];
+}
+function lsmline(d) {// 参考 https://ja.wikipedia.org/wiki/%E6%9C%80%E5%B0%8F%E4%BA%8C%E4%B9%97%E6%B3%95
+    const n=d.length;let xy=0;let x=0;let y=0;let x2=0;
+    for(let k=0;k<n;k++){xy+=d[k][0]*d[k][1];x+=d[k][0];y+=d[k][1];x2+=d[k][0]**2;}
+    const d_=n*x2-x**2;return [(n*xy-x*y)/d_,(x2*y-xy*x)/d_];
+}
+
+function getdata_g1() {
+    let subjects = [];
+    let res = [];
+    let st = data.replace(/\r/g,"").split("\n");
+    for (let a of st) {
+        let sa = a.split(",");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjects.indexOf(subjectname)==-1) {
+                subjects.push(subjectname);
+            }
+        }
+    }
+    console.log(subjects)
+    for (let a of st) {
+        let sa = a.split(",");
+        let value = 0;
+        let det = Array(subjects.length).fill(0);
+        let day_ = sa[0].replace(/\./g,"-");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+
+            let timed = sa[i].slice(2).split(" ")[0];
+            let range=0;
+            if (timed[0]=="[") {
+                for (let timed_ of timed.slice(1,-1).split("|")) {
+                    let startend = timed_.split("~");
+                    range += (Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60;
+                    //console.log(timed_,(Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60)
+                }
+            }
+            else { range = Number(timed); }
+
+            value += range;
+            det[ subjects.indexOf(subjectname) ] += range;
+        }
+        res.push([Date.parse(day_),value,det]);
+    }
+    console.log("day")
+    console.table(res)
+    return [res,subjects];
+}
+    let colors = [ [0,255,0],[255,0,0],[0,0,255],[255,255,180],[176,255,255],[255,240,255],[255,230,245] ,[210,250,150],[200,250,210],[230,230,238],[250,229,200],[210,190,230],[176,230,217],[200,245,255],[213,220,210],[200,250,200],[220,195,235],[198,215,242],[230,223,350],[0,0,0],[255,255,255],[255,255,250],[245,255,240]]
+function showImage_g1(sdata,prop) {
+    let svgelm = document.getElementById("output");
+
+    svgelm.setAttributeNS(null,"width",prop[0])
+    svgelm.setAttributeNS(null,"height",prop[1])
+
+    let data = sdata[0];
+    let subjects = sdata[1];
+    let minvalue = 0;
+    let tspan = data[data.length-1][0]-data[0][0];
+    let scale = prop[2];
+    let ddata = Array(data.length).map(()=>{return [0,0]})
+    for (let i=0;i<data.length;i++) {
+        ddata[i] = [(data[i][0]-data[0][0])*prop[0]/tspan,prop[1]-((data[i][1]-minvalue)*10*scale)];
+    }
+    //
+    for (let i=1;i<data.length;i++) {
+        let date = new Date(data[i-1][0])
+        {
+            let rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+            rect.setAttributeNS(null,"fill",`rgb(${((date.getMonth())%3)*30+((date.getDay()+6)%7)*30+10},${((date.getMonth())%3)*20+200},${((date.getMonth())%2)*40+200})`);
+            rect.setAttributeNS(null,"x",(data[i-1][0]-data[0][0]-(data[i][0]-data[i-1][0])/2)*prop[0]/tspan);
+            rect.setAttributeNS(null,"y",20);
+            rect.setAttributeNS(null,"width",data[i][0]-data[i-1][0]);
+            rect.setAttributeNS(null,"height",prop[1]-20);
+            svgelm.appendChild(rect);
+        }
+        {
+            let rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+            rect.setAttributeNS(null,"fill",`rgb(${(date.getFullYear()%3)*100+50},${(date.getFullYear()%4)*50+50},${(date.getFullYear()%2)*200+50})`);
+            rect.setAttributeNS(null,"x",(data[i-1][0]-data[0][0]-(data[i][0]-data[i-1][0])/2)*prop[0]/tspan);
+            rect.setAttributeNS(null,"y",0);
+            rect.setAttributeNS(null,"width",data[i][0]-data[i-1][0]);
+            rect.setAttributeNS(null,"height",10);
+            svgelm.appendChild(rect);
+        }
+    }
+    // 掛線の描画
+    let lsm = lsmline(ddata)
+
+
+    {
+        let patht = `M 0 ${lsm[0]+lsm[1]} L ${prop[0]} ${lsm[0]*prop[0]+lsm[1]}`;
+        let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+        path.setAttributeNS(null,"d",patht);
+        path.setAttributeNS(null,"fill","none");
+        path.setAttributeNS(null,"stroke",`rgb(200,50,100)`);
+        path.setAttributeNS(null,"stroke-width",`2`);
+        svgelm.appendChild(path);
+    }
+
+    let line_span = 2;
+    for (let i=0;(i*line_span)*10*scale<prop[1];i+=1) {
+        let patht = `M 0 ${prop[1]-((i*line_span)*10*scale)} L ${prop[0]} ${prop[1]-((i*line_span)*10*scale)}`;
+        let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+        path.setAttributeNS(null,"d",patht);
+        path.setAttributeNS(null,"fill","none");
+        path.setAttributeNS(null,"stroke",`rgb(240,250,250)`);
+        path.setAttributeNS(null,"stroke-width",(i*line_span%10)==0 ? ( ((i*line_span%60)==0 ? 5 : 2) ) : 1);
+        svgelm.appendChild(path);
+    }
+    for (let i=1;i<data.length;i++) {
+        let patht = `M ${(data[i][0]-data[0][0])*prop[0]/tspan} 0 L ${(data[i][0]-data[0][0])*prop[0]/tspan} ${prop[1]}`;
+        let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+        path.setAttributeNS(null,"d",patht);
+        path.setAttributeNS(null,"fill","none");
+        path.setAttributeNS(null,"stroke",`rgb(200,200,230)`);
+        path.setAttributeNS(null,"stroke-width",`1`);
+        svgelm.appendChild(path);
+    }
+    // データの描画
+    for (let i=1;i<data.length;i++) {
+        let bf = [0,0];
+        for (let s=0;s<subjects.length;s++) {
+            let patht = `M ${(data[i][0]-data[0][0])*prop[0]/tspan} ${prop[1]-((bf[1]-minvalue)*10*scale)}`;
+            patht += `L ${(data[i-1][0]-data[0][0])*prop[0]/tspan} ${prop[1]-((bf[0]-minvalue)*10*scale)}`;
+            bf[0] += data[i-1][2][s];
+            bf[1] += data[i][2][s];
+            patht += `L ${(data[i-1][0]-data[0][0])*prop[0]/tspan} ${prop[1]-((bf[0]-minvalue)*10*scale)}`
+            patht += `L ${(data[i][0]-data[0][0])*prop[0]/tspan} ${prop[1]-((bf[1]-minvalue)*10*scale)}`
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill",`rgb(${colors[s][0]},${colors[s][1]},${colors[s][2]})`);
+            path.setAttributeNS(null,"stroke",`none`);
+            path.setAttributeNS(null,"stroke-width",`2`);
+            svgelm.appendChild(path);
+
+        }
+        {
+            let patht = `M ${(data[i-1][0]-data[0][0])*prop[0]/tspan} ${prop[1]-((data[i-1][1]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0])*prop[0]/tspan} ${prop[1]-((data[i][1]-minvalue)*10*scale)}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","transparent");
+            path.setAttributeNS(null,"stroke",`rgb(0,0,0)`);
+            path.setAttributeNS(null,"stroke-width",`1`);
+            svgelm.appendChild(path);
+        }
+        {
+            let circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+            circle.setAttributeNS(null,"cx",(data[i-1][0]-data[0][0])*prop[0]/tspan);
+            circle.setAttributeNS(null,"cy",prop[1]-((data[i-1][1]-minvalue)*10*scale));
+            circle.setAttributeNS(null,"r",2);
+            circle.setAttributeNS(null,"fill","rgb(0,0,0)");
+            circle.setAttributeNS(null,"stroke",`rgb(0,0,0)`);
+            circle.setAttributeNS(null,"stroke-width",`1`);
+            svgelm.appendChild(circle);
+        }
+    }
+    {
+        let circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        circle.setAttributeNS(null,"cx",(data[data.length-1][0]-data[0][0])*prop[0]/tspan);
+        circle.setAttributeNS(null,"cy",prop[1]-((data[data.length-1][1]-minvalue)*10*scale));
+        circle.setAttributeNS(null,"r",2);
+        circle.setAttributeNS(null,"fill","rgb(0,0,0)");
+        circle.setAttributeNS(null,"stroke",`rgb(0,0,0)`);
+        circle.setAttributeNS(null,"stroke-width",`1`);
+        svgelm.appendChild(circle);
+    }
+
+    // 目盛
+    
+    for (let i=10;(i*line_span)*10*scale<prop[1];i+=10) {
+        let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+        label.setAttributeNS(null,"x",0);
+        label.setAttributeNS(null,"y",prop[1]-((i*line_span)*10*scale) +10);
+        label.setAttributeNS(null,"font-size",20);
+        label.setAttributeNS(null,"class","hide");
+        label.innerHTML = `${i*2}分`
+        svgelm.appendChild(label);
+    }
+    for (let i=12;i<data.length;i+=10) {
+        let date = new Date(data[i][0])
+        let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+        label.setAttributeNS(null,"x",(data[i][0]-data[0][0])*prop[0]/tspan);
+        label.setAttributeNS(null,"y",40);
+        label.setAttributeNS(null,"font-size",20);
+        label.innerHTML = `${date.getMonth()+1}/${date.getDate()}`
+        svgelm.appendChild(label);
+    }
+}
+</script>
+<style>
+    body {
+        margin: 0;
+    }
+    #table3 {
+        border: 1px solid black;
+        width: fit-content;
+        margin: 5px;
+    }
+    #table3 th, #table3 td {
+        padding: 1px;
+        border: 1px solid rgb(210, 210, 210);
+    }
+    #table3 th {
+        border-bottom: 1px solid black;
+    }
+    .svg {
+        border: 1px solid;
+    }
+</style>
