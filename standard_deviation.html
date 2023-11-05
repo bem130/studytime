@@ -55,31 +55,24 @@ async function getSSize() {
     let args = {};
     let gsizes = {"pc":[1920,1080,0.12],"a4":[594*2,420*2,0.09],"pc_":[1080,1920,0.2],"phone":[1080,2400,0.27],"a4_":[420*2,594*2,0.13],"pcwide":[1920*2,1080,0.12],"pc4":[1920*2,1080*2,0.24]};
     args.data_g1 = getdata_g1();
-    args.gsize = gsizes["pc4"]; // resolution
-    let mbpspan = [30,100];
+    args.gsize = gsizes["pc"]; // resolution
+    //args.gsize = gsizes["phone"]
     let smaspan = [7,30,100];
-    showImage_g1(args.data_g1,prepare_mbp(args,mbpspan),prepare_sma(args,smaspan),[...args.gsize,args.gsize[2]*2],document.getElementById(`output`));
+    showImage_g1(args.data_g1,prepare_sd(args,smaspan),[...args.gsize,args.gsize[2]*2],document.getElementById(`output`));
     output(args.gsize);
 }
 getSSize();
 
-function prepare_mbp(args,n) {
+function prepare_sd(args,n) {
     let ret = [];
     for (let i=0;i<n.length;i++) {
-        ret.push([getdata_g6(args.data_g1,n[i]),n[i]]);
-    }
-    return ret;
-}
-function prepare_sma(args,n) {
-    let ret = [];
-    for (let i=0;i<n.length;i++) {
-        ret.push([getdata_sma(args.data_g1,n[i]),n[i]]);
+        ret.push([getdata_sd(args.data_g1,n[i]),n[i]]);
     }
     return ret;
 }
 
 function getdata_g1() {
-    let subjects = [];
+    let subjects = ["睡眠","数学","英語","国語"];
     let res = [];
     let st = data.replace(/\r/g,"").split("\n");
     for (let a of st) {
@@ -99,7 +92,7 @@ function getdata_g1() {
         let day_ = sa[0].replace(/\./g,"-");
         for (let i=1;i<sa.length;i++) {
             let subjectname = sa[i].slice(0,2);
-            if (subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+            if (subjectname=="睡眠"||subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
 
             let timed = sa[i].slice(2).split(" ")[0];
             let range=0;
@@ -121,22 +114,59 @@ function getdata_g1() {
     console.table(res)
     return [res,subjects];
 }
+
+function getdata_sd(data_g1,N=14) { // 標準偏差
+    // console.log(data_g1)
+    let ddata = data_g1[0];
+    let res = Array(ddata.length).fill(null).map(()=>{return [null,null]});
+    //console.log(res)
+    for (let i=0;i<N-1;i++) { // 日数不足は無視
+        res[i][0] = ddata[i][0];
+    }
+    for (let i=N-1;i<ddata.length;i++) {
+        res[i][0] = ddata[i][0]; // 開始日
+        let sum = 0;
+        // 勉強時間の総和
+        for (let c=0;c<N;c++) {
+            sum += ddata[i-c][1];
+        }
+        // 総和を日数で割る
+        let avr = sum/N; // avrが平均
+        // 差の二乗の和
+        let difsum = 0;
+        for (let c=0;c<N;c++) {
+            let dif_square = (ddata[i-c][1] - avr)**2;
+            difsum += dif_square;
+        }
+        // 差の二乗の平均, 分散
+        let variance = difsum/N;
+        // 分散の平方根, 標準偏差
+        let standardDeviation = Math.sqrt(variance);
+        console.log(standardDeviation);
+        res[i][1] = standardDeviation;
+    }
+    return res
+}
 function getdata_sma(data_g1,N=14) { // 単純移動平均
     // console.log(data_g1)
     let ddata = data_g1[0];
     let res = Array(ddata.length).fill(null).map(()=>{return [null,null]});
     //console.log(res)
-    for (let i=0;i<N-1;i++) {
+    for (let i=0;i<N-1;i++) { // 日数不足は無視
         res[i][0] = ddata[i][0];
     }
     for (let i=N-1;i<ddata.length;i++) {
-        res[i][0] = ddata[i][0];
+        res[i][0] = ddata[i][0]; // 開始日
+        let sum = 0;
+        // 勉強時間の総和
         for (let c=0;c<N;c++) {
-            res[i][1] += ddata[i-c][1];
+            sum += ddata[i-c][1];
         }
-        res[i][1] /= N;
+        // 総和を日数で割る
+        let avr = sum/N; // avrが平均
+        res[i][1] = avr;
     }
-    return res
+    return res;
 }
 function getdata_g6(data_g1,N=14) { // 箱ひげ図
     //console.log(data_g1)
@@ -187,8 +217,8 @@ function median(x) {
 }
 
     let setting = {}
-    let colors = [ [0,255,0],[255,0,0],[0,0,255],[255,255,180],[176,255,255],[255,240,255],[255,230,245] ,[210,250,150],[200,250,210],[230,230,238],[250,229,200],[210,190,230],[176,230,217],[200,245,255],[213,220,210],[200,250,200],[220,195,235],[198,215,242],[230,223,350],[0,0,0],[255,255,255],[255,255,250],[245,255,240]]
-function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
+let colors = [[100,100,100], [0,255,0],[255,0,0],[0,0,255],[255,255,180],[176,255,255],[255,240,255],[255,230,245] ,[210,250,150],[200,250,210],[230,230,238],[250,229,200],[210,190,230],[176,230,217],[200,245,255],[213,220,210],[200,250,200],[220,195,235],[198,215,242],[230,223,350],[0,0,0],[255,255,255],[255,255,250],[245,255,240],[205,150,100]]
+function showImage_g1(raw,sd,prop,svgelm,n) {
 
     svgelm.setAttributeNS(null,"width",prop[0])
     svgelm.setAttributeNS(null,"height",prop[1])
@@ -243,58 +273,6 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
         path.setAttributeNS(null,"stroke-width",(i*line_span%10)==0 ? ( ((i*line_span%60)==0 ? 5 : 2) ) : 1);
         group2.appendChild(path);
     }
-    // mbpliteの描画
-    for (let s=0;s<mbp.length;s++) {
-        let group6 = document.createElementNS("http://www.w3.org/2000/svg","g");
-        setting["mbp"+mbp[s][1]+"lite"] = group6;
-        svgelm.appendChild(group6);
-        //group6.setAttributeNS(null,"visibility","hidden");
-        let data = mbp[s][0][0];
-        let n = mbp[s][1];
-        // console.log(data,mbp[s])
-        for (let i=0;i<data.length;i+=1) {
-            {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][3]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][4]-minvalue)*10*scale)}`;
-                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
-                path.setAttributeNS(null,"d",patht);
-                path.setAttributeNS(null,"fill","none");
-                    if (i>n) { path.setAttributeNS(null,"stroke",`rgba(0,255,255,0.05)`); }
-                    else { path.setAttributeNS(null,"stroke",`rgba(100,100,0,0.05)`); }
-                path.setAttributeNS(null,"stroke-width",`8`);
-                group6.appendChild(path);
-            }
-            {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][2]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][3]-minvalue)*10*scale)}`;
-                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
-                path.setAttributeNS(null,"d",patht);
-                path.setAttributeNS(null,"fill","none");
-                    if (i>n) { path.setAttributeNS(null,"stroke",`rgba(200,255,0,0.2)`); }
-                    else { path.setAttributeNS(null,"stroke",`rgba(100,100,0,0.2)`); }
-                path.setAttributeNS(null,"stroke-width",`8`);
-                group6.appendChild(path);
-            }
-            {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][1]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][2]-minvalue)*10*scale)}`;
-                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
-                path.setAttributeNS(null,"d",patht);
-                path.setAttributeNS(null,"fill","none");
-                    if (i>n) { path.setAttributeNS(null,"stroke",`rgba(200,0,255,0.2)`); }
-                    else { path.setAttributeNS(null,"stroke",`rgba(100,0,100,0.2)`); }
-                path.setAttributeNS(null,"stroke-width",`8`);
-                group6.appendChild(path);
-            }
-            {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][0]-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][1]-minvalue)*10*scale)}`;
-                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
-                path.setAttributeNS(null,"d",patht);
-                path.setAttributeNS(null,"fill","none");
-                    if (i>n) { path.setAttributeNS(null,"stroke",`rgba(0,255,0,0.05)`); }
-                    else { path.setAttributeNS(null,"stroke",`rgba(100,0,0,0.05)`); }
-                path.setAttributeNS(null,"stroke-width",`8`);
-                group6.appendChild(path);
-            }
-        }
-    }
     // rawの描画
     {
         let group7 = document.createElementNS("http://www.w3.org/2000/svg","g");
@@ -309,7 +287,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 path.setAttributeNS(null,"d",patht);
                 path.setAttributeNS(null,"fill","none");
                 path.setAttributeNS(null,"stroke",`rgb(200,0,0)`);
-                path.setAttributeNS(null,"stroke-width",`7`);
+                path.setAttributeNS(null,"stroke-width",`5`);
                 group7.appendChild(path);
             }
             let bf = [0];
@@ -320,73 +298,28 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 let path = document.createElementNS("http://www.w3.org/2000/svg","path");
                 path.setAttributeNS(null,"d",patht);
                 path.setAttributeNS(null,"stroke",`rgb(${colors[s][0]*0.4},${colors[s][1]*0.4},${colors[s][2]*0.4})`);
-                path.setAttributeNS(null,"stroke-width",`5`);
+                path.setAttributeNS(null,"stroke-width",`3`);
                 group7.appendChild(path);
             }
         }
     }
 
-    // mqの描画
-    for (let s=0;s<mbp.length;s++) {
-        let group3 = document.createElementNS("http://www.w3.org/2000/svg","g");
-        setting["mq"+mbp[s][1]] = group3;
-        {
-            group3.setAttributeNS(null,"stroke-linecap",`round`);
-        }
-        svgelm.appendChild(group3);
-        let data = mbp[s][0][0];
-        let n = mbp[s][1];
-        // console.log(data,mbp[s])
-        for (let i=1;i<data.length;i+=1) {
-            {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][3]-minvalue)*10*scale)} L ${(data[i-1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i-1][3][3]-minvalue)*10*scale)}`;
-                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
-                path.setAttributeNS(null,"d",patht);
-                path.setAttributeNS(null,"fill","none");
-                    if (i>n) { path.setAttributeNS(null,"stroke",`rgb(10,180,${255-n*5})`); }
-                    else { path.setAttributeNS(null,"stroke",`rgb(10,100,0)`); }
-                path.setAttributeNS(null,"stroke-width",`4`);
-                group3.appendChild(path);
-            }
-            {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][2]-minvalue)*10*scale)} L ${(data[i-1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i-1][3][2]-minvalue)*10*scale)}`;
-                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
-                path.setAttributeNS(null,"d",patht);
-                path.setAttributeNS(null,"fill","none");
-                    if (i>n) { path.setAttributeNS(null,"stroke",`rgb(150,180,${255-n*5})`); }
-                    else { path.setAttributeNS(null,"stroke",`rgb(100,100,0)`); }
-                path.setAttributeNS(null,"stroke-width",`5`);
-                group3.appendChild(path);
-            }
-            {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][3][1]-minvalue)*10*scale)} L ${(data[i-1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i-1][3][1]-minvalue)*10*scale)}`;
-                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
-                path.setAttributeNS(null,"d",patht);
-                path.setAttributeNS(null,"fill","none");
-                    if (i>n) { path.setAttributeNS(null,"stroke",`rgb(10,180,${255-n*5})`); }
-                    else { path.setAttributeNS(null,"stroke",`rgb(10,100,150)`); }
-                path.setAttributeNS(null,"stroke-width",`4`);
-                group3.appendChild(path);
-            }
-        }
-    }
-
-    // smaの描画
-    for (let s=sma.length-1;s>=0;s--) {
+    // sdの描画
+    for (let s=sd.length-1;s>=0;s--) {
         let group5 = document.createElementNS("http://www.w3.org/2000/svg","g");
-        setting["sma"+sma[s][1]+"line"] = group5;
+        setting["sd"+sd[s][1]+"line"] = group5;
         svgelm.appendChild(group5);
         group5.setAttributeNS(null,"visibility","visible");
         {
-            group5.setAttributeNS(null,"stroke-width",`10`);
+            group5.setAttributeNS(null,"stroke-width",`5`);
             group5.setAttributeNS(null,"stroke-linecap",`round`);
         }
-        let data = sma[s][0];
-        let n = sma[s][1];
+        let data = sd[s][0];
+        let n = sd[s][1];
        // group4.setAttributeNS(null,"visibility","hidden");
         for (let i=0;i<data.length-1;i++) {
             {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][1]-minvalue)*10*scale)} L ${(data[i+1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i+1][1]-minvalue)*10*scale)}`;
+                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000-n*3600*12*1000)*prop[0]/tspan} ${prop[1]-((data[i][1]-minvalue)*10*scale)} L ${(data[i+1][0]-data[0][0]+3600*24*1000-n*3600*12*1000)*prop[0]/tspan} ${prop[1]-((data[i+1][1]-minvalue)*10*scale)}`;
                 let path = document.createElementNS("http://www.w3.org/2000/svg","path");
                 path.setAttributeNS(null,"d",patht);
                 path.setAttributeNS(null,"fill","none");
