@@ -55,11 +55,11 @@ async function getSSize() {
     articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
     data = await articleRes.text();
     let args = {};
-    let gsizes = {"pc":[1920,1080,0.12],"a4":[594*2,420*2,0.09],"pc_":[1080,1920,0.2],"phone":[1080,2400,0.27],"a4_":[420*2,594*2,0.13],"pcwide":[1920*2,1080,0.12],"pc4":[1920*2,1080*2,0.24]};
+    let gsizes = {"pc":[1920,1080,0.12],"a4":[594*2,420*2,0.09],"pc_":[1080,1920,0.2],"phone":[1080,2400,0.27],"a4_":[420*2,594*2,0.13],"pcwide":[1920*2,1080,0.12],"pcwide2":[1920*4,1080,0.12],"pc4":[1920*2,1080*2,0.24]};
     args.data_g1 = getdata_g1();
-    args.gsize = gsizes["pc"]; // resolution
+    args.gsize = gsizes["pcwide2"]; // resolution
     //args.gsize = gsizes["phone"]
-    let bbspan = [30,100];
+    let bbspan = [7,14,30,100];
     let smaspan = [7,30,100];
     for (let i=0;i<bbspan.length;i++) {
         showImage_g1(args.data_g1,[getdata_sma(args.data_g1,bbspan[i]),bbspan[i]],[getdata_sd(args.data_g1,bbspan[i]),bbspan[i]],prepare_sma(args,smaspan),[...args.gsize,args.gsize[2]*2],document.getElementById(`output${i}`),bbspan[i]);
@@ -280,24 +280,56 @@ function showImage_g1(raw,sma4sd,sd,sma,prop,svgelm,n) {
         group2.appendChild(path);
     }
     // rawの描画
+    // {
+    //     let group7 = document.createElementNS("http://www.w3.org/2000/svg","g");
+    //     setting.rule = group7;
+    //     svgelm.appendChild(group7);
+    //     let data = raw[0];
+    //     let subjects = raw[1];
+    //     for (let i=0;i<data.length-1;i++) {
+    //         {
+    //             let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][1]-minvalue)*10*scale)} L ${(data[i+1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i+1][1]-minvalue)*10*scale)}`;
+    //             let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    //             path.setAttributeNS(null,"d",patht);
+    //             path.setAttributeNS(null,"fill","none");
+    //             path.setAttributeNS(null,"stroke",`rgb(150,0,0)`);
+    //             path.setAttributeNS(null,"stroke-width",`2`);
+    //             group7.appendChild(path);
+    //         }
+    //     }
+    // }
+
+    // rawの描画
     {
         let group7 = document.createElementNS("http://www.w3.org/2000/svg","g");
         setting.rule = group7;
         svgelm.appendChild(group7);
         let data = raw[0];
         let subjects = raw[1];
-        for (let i=0;i<data.length-1;i++) {
+        for (let i=0;i<data.length;i++) {
             {
-                let patht = `M ${(data[i][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i][1]-minvalue)*10*scale)} L ${(data[i+1][0]-data[0][0]+3600*24*1000)*prop[0]/tspan} ${prop[1]-((data[i+1][1]-minvalue)*10*scale)}`;
+                let patht = `M ${(data[i][0]-data[0][0]+3600*12*1000)*prop[0]/tspan} ${prop[1]-((0-minvalue)*10*scale)} L ${(data[i][0]-data[0][0]+3600*12*1000)*prop[0]/tspan} ${prop[1]-((data[i][1]-minvalue)*10*scale +1)}`;
                 let path = document.createElementNS("http://www.w3.org/2000/svg","path");
                 path.setAttributeNS(null,"d",patht);
                 path.setAttributeNS(null,"fill","none");
-                path.setAttributeNS(null,"stroke",`rgb(150,0,0)`);
-                path.setAttributeNS(null,"stroke-width",`2`);
+                path.setAttributeNS(null,"stroke",`rgb(200,0,0)`);
+                path.setAttributeNS(null,"stroke-width",`7`);
+                group7.appendChild(path);
+            }
+            let bf = [0];
+            for (let s=0;s<subjects.length;s++) {
+                let patht = `M ${(data[i][0]-data[0][0]+3600*12*1000)*prop[0]/tspan} ${prop[1]-((bf[0]-minvalue)*10*scale)} `;
+                bf[0] += data[i][2][s];
+                patht += `L ${(data[i][0]-data[0][0]+3600*12*1000)*prop[0]/tspan} ${prop[1]-((bf[0]-minvalue)*10*scale)}`;
+                let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+                path.setAttributeNS(null,"d",patht);
+                path.setAttributeNS(null,"stroke",`rgb(${colors[s][0]*0.4},${colors[s][1]*0.4},${colors[s][2]*0.4})`);
+                path.setAttributeNS(null,"stroke-width",`5`);
                 group7.appendChild(path);
             }
         }
     }
+
 
     // smaの描画
     for (let s=sma.length-1;s>=0;s--) {
