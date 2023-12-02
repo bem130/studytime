@@ -1,0 +1,252 @@
+<!-- bem130 -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output" class="svg"></svg>
+        <a id="svgdl" target="_blank">SVG</a>
+        <a id="pngdl" target="_blank">PNG</a>
+        <a id="mpngdl" target="_blank">PNG_Margin</a>
+        <div id="menu"></div>
+    </body>
+</html>
+<script>
+let data = "";
+function output(res) {
+    const svgText = new XMLSerializer().serializeToString(document.getElementById("output"));
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    console.log("svg",svgUrl);
+    document.getElementById("svgdl").href = svgUrl;
+    const image = new Image();
+    image.src = svgUrl;
+    image.onload = ()=>{
+        {
+            let canvas = document.createElement("canvas");
+            canvas.height = res[1];
+            canvas.width = res[0];
+            let ctx = canvas.getContext("2d")
+            ctx.drawImage(image,0,0,res[0],res[1])
+            canvas.toBlob((blob)=>{
+                let imgUrl = window.URL.createObjectURL(blob);
+                console.log("bmp",imgUrl)
+                document.getElementById("pngdl").href = imgUrl;
+            })
+        }
+        {
+            let canvas = document.createElement("canvas");
+            canvas.height = res[1]+300;
+            canvas.width = res[0]+300;
+            let ctx = canvas.getContext("2d")
+            ctx.drawImage(image,150,150,res[0],res[1])
+            canvas.toBlob((blob)=>{
+                let imgUrl = window.URL.createObjectURL(blob);
+                console.log("bmp",imgUrl)
+                document.getElementById("mpngdl").href = imgUrl;
+            })
+        }
+    }
+}
+async function main() {
+    articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
+    data = await articleRes.text();
+    let args = {};
+    let gsizes = {"pc":[1920,1080,0.12],"a4":[594*2,420*2,0.09],"pc_":[1080,1920,0.2],"pc3_":[1080*1.5,1920*1.5,0.3],"phone":[1080,2400,0.27],"a4_":[420*2,594*2,0.13],"pcwide":[1920*2,1080,0.12],"pc4":[1920*2,1080*2,0.24]};
+    args.data_g1 = getdata_g1();
+    args.gsize = gsizes["a4"]; // resolution
+    args.span = {min:0,max:450,len:10};
+    //args.gsize = gsizes["pc3_"]
+    showImage_g1(getHistogramdata(args.data_g1,args.span),args.span,
+                getQuartile(args.data_g1[0].map(x=>{return x[1]})),
+                args.data_g1[0].map(x=>{return x[1]}).reduce((s,e)=>{return s+e;})/args.data_g1[0].length,
+                [...args.gsize,args.gsize[2]*2],document.getElementById(`output`));
+    output(args.gsize);
+}
+main();
+
+function getdata_g1() {
+    let subjects = ["睡眠","数学","英語","国語"];
+    let res = [];
+    let st = data.replace(/\r/g,"").split("\n");
+    for (let a of st) {
+        let sa = a.split(",");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjects.indexOf(subjectname)==-1) {
+                subjects.push(subjectname);
+            }
+        }
+    }
+    console.log(subjects)
+    for (let a of st) {
+        let sa = a.split(",");
+        let value = 0;
+        let det = Array(subjects.length).fill(0);
+        let day_ = sa[0].replace(/\./g,"-");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjectname=="睡眠"||subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+
+            let timed = sa[i].slice(2).split(" ")[0];
+            let range=0;
+            if (timed[0]=="[") {
+                for (let timed_ of timed.slice(1,-1).split("|")) {
+                    let startend = timed_.split("~");
+                    range += (Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60;
+                    //console.log(timed_,(Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60)
+                }
+            }
+            else { range = Number(timed); }
+
+            value += range;
+            det[ subjects.indexOf(subjectname) ] += range;
+        }
+        res.push([Date.parse(day_),value,det]);
+    }
+    console.log("day")
+    console.table(res)
+    return [res,subjects];
+}
+
+function getHistogramdata(data_g1,span) {
+    if(span.len<0.01) {throw `invalid length`}
+    if(span.max<span.min) {throw `invalid span`}
+    // console.log(data_g1)
+    let ddata = data_g1[0];
+    let res = Array(Math.ceil((span.max-span.min)/span.len)).fill(0);
+    //console.log(res)
+    for (let i=0;i<ddata.length;i++) {
+        let index = Math.floor(ddata[i][1]/span.len-span.min)
+        if (index>=0&&index<res.length) {
+            res[index]++;
+        }
+    }
+    console.log(res)
+    return res
+}
+function getQuartile(arr) {
+    let sorted = arr.map((x)=>{return x;}).sort((a,b)=>{return a-b;});
+    console.log(sorted)
+    return quartile(sorted);
+}
+function quartile(x) { // require sorted array
+    let ret = Array(5);
+    ret[0] = x[0];
+    ret[4] = x[x.length-1];
+    ret[2] = median(x);
+    ret[1] = median( x.filter((x)=>{return x<ret[2]}) )
+    ret[3] = median( x.filter((x)=>{return x>ret[2]}) )
+    return ret;
+}
+function median(x) {
+    if(x.length%2==0){
+        return (x[x.length/2-1]+x[x.length/2])/2;
+    }else{
+        return x[(x.length-1)/2]
+    }
+}
+
+
+function showImage_g1(data,spanconf,quartile,average,prop,svgelm) {
+    console.log(quartile,average)
+    svgelm.setAttributeNS(null,"width",prop[0])
+    svgelm.setAttributeNS(null,"height",prop[1])
+    let scale = prop[1]/Math.max(...data)*0.9;
+    let bottomm = 20;
+    // 背景
+    for (let i=0;i<data.length+1;i++) {
+        let rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        rect.setAttributeNS(null,"fill",`rgba(${(i+1)%2*10},0,${i%2*10},0.8)`);
+        rect.setAttributeNS(null,"x",i*(prop[0]/data.length));
+        rect.setAttributeNS(null,"y",0);
+        rect.setAttributeNS(null,"width",prop[0]/data.length);
+        rect.setAttributeNS(null,"height",prop[1]);
+        svgelm.appendChild(rect);
+    }
+    // データ
+    for (let i=0;i<data.length;i++) {
+        let rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        rect.setAttributeNS(null,"fill",`rgb(200,200,250`);
+        rect.setAttributeNS(null,"x",i*(prop[0]/data.length));
+        rect.setAttributeNS(null,"y",prop[1]-data[i]*scale-bottomm);
+        rect.setAttributeNS(null,"width",prop[0]/data.length);
+        rect.setAttributeNS(null,"height",data[i]*scale);
+        svgelm.appendChild(rect);
+    }
+    // ラベル
+    for (let i=0;i<data.length;i++) {
+        let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+        label.setAttributeNS(null,"x",i*(prop[0]/data.length)+4);
+        label.setAttributeNS(null,"y",prop[1]-data[i]*scale-bottomm-5);
+        if (data[i]!=0) {
+            label.setAttributeNS(null,"fill",`rgb(255,255,255)`);
+        }
+        else {
+            label.setAttributeNS(null,"fill",`rgba(255,255,255,0.4)`);
+        }
+        label.setAttributeNS(null,"font-size",10);
+        label.innerHTML = data[i]
+        svgelm.appendChild(label);
+    }
+    // 目盛
+    for (let i=0;i<data.length+1;i++) {
+        let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+        label.setAttributeNS(null,"x",i*(prop[0]/data.length));
+        label.setAttributeNS(null,"y",prop[1]-5);
+        label.setAttributeNS(null,"fill",`rgb(150,150,150)`);
+        label.setAttributeNS(null,"font-size",10);
+        label.innerHTML = i*10
+        svgelm.appendChild(label);
+    }
+    // 四分位数
+    for (let i=0;i<quartile.length;i++) {
+        {
+            let patht = `M ${quartile[i]*(prop[0]/(spanconf.max-spanconf.min))+spanconf.min} 0 L ${quartile[i]*(prop[0]/(spanconf.max-spanconf.min))+spanconf.min} ${prop[1]}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+            path.setAttributeNS(null,"stroke",`rgba(100,255,255,0.5)`);
+            path.setAttributeNS(null,"stroke-width",2);
+            svgelm.appendChild(path);
+        }
+        {
+            let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+            label.setAttributeNS(null,"x",quartile[i]*(prop[0]/(spanconf.max-spanconf.min))+spanconf.min+3);
+            label.setAttributeNS(null,"y",20+15*i);
+            label.setAttributeNS(null,"font-size",12);
+            label.setAttributeNS(null,"fill",`rgb(100,255,255)`);
+            label.innerHTML = `Q${i}: ${quartile[i]}`;
+            svgelm.appendChild(label);
+        }
+    }
+    // 平均
+    {
+        {
+            let patht = `M ${average*(prop[0]/(spanconf.max-spanconf.min))+spanconf.min} 0 L ${average*(prop[0]/(spanconf.max-spanconf.min))+spanconf.min} ${prop[1]}`;
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttributeNS(null,"d",patht);
+            path.setAttributeNS(null,"fill","none");
+            path.setAttributeNS(null,"stroke",`rgba(255,100,255,0.5)`);
+            path.setAttributeNS(null,"stroke-width",2);
+            svgelm.appendChild(path);
+        }
+        {
+            let label = document.createElementNS("http://www.w3.org/2000/svg","text");
+            label.setAttributeNS(null,"x",average*(prop[0]/(spanconf.max-spanconf.min))+spanconf.min+3);
+            label.setAttributeNS(null,"y",95);
+            label.setAttributeNS(null,"font-size",12);
+            label.setAttributeNS(null,"fill",`rgb(255,100,255)`);
+            label.innerHTML = `Avg: ${average}`;
+            svgelm.appendChild(label);
+        }
+    }
+}
+</script>
+<style>
+    body {
+        margin: 0;
+        background-color: rgb(19, 23, 43);
+    }
+</style>
