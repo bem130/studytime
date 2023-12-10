@@ -1,0 +1,191 @@
+<!-- bem130 -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <svg  width="0" height="0" xmlns="http://www.w3.org/2000/svg" id="output" class="svg"></svg>
+        <a id="svgdl" target="_blank">SVG</a>
+        <a id="pngdl" target="_blank">PNG</a>
+        <a id="mpngdl" target="_blank">PNG_Margin</a>
+        <div id="menu"></div>
+    </body>
+</html>
+<script>
+let data = "";
+function output(res) {
+    const svgText = new XMLSerializer().serializeToString(document.getElementById("output"));
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    console.log("svg",svgUrl);
+    document.getElementById("svgdl").href = svgUrl;
+    const image = new Image();
+    image.src = svgUrl;
+    image.onload = ()=>{
+        {
+            let canvas = document.createElement("canvas");
+            canvas.height = res[1];
+            canvas.width = res[0];
+            let ctx = canvas.getContext("2d")
+            ctx.drawImage(image,0,0,res[0],res[1])
+            canvas.toBlob((blob)=>{
+                let imgUrl = window.URL.createObjectURL(blob);
+                console.log("bmp",imgUrl)
+                document.getElementById("pngdl").href = imgUrl;
+            })
+        }
+        {
+            let canvas = document.createElement("canvas");
+            canvas.height = res[1]+300;
+            canvas.width = res[0]+300;
+            let ctx = canvas.getContext("2d")
+            ctx.drawImage(image,150,150,res[0],res[1])
+            canvas.toBlob((blob)=>{
+                let imgUrl = window.URL.createObjectURL(blob);
+                console.log("bmp",imgUrl)
+                document.getElementById("mpngdl").href = imgUrl;
+            })
+        }
+    }
+}
+async function getSSize() {
+    articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
+    data = await articleRes.text();
+    let data_elapsed = getdata_timeelapsed(getdata_g1(),30);
+    let args = {span:{min:0,max:460,len:10}};
+    let size = showImage(data_elapsed,document.getElementById("output"),args);
+    output(size);
+}
+getSSize();
+
+function showImage(data,svgelm,args) {
+    let margin = 10;
+    let cell = [2,10];
+    let cell_margin = 1;
+    let histogramelmlen = Math.ceil((args.span.max-args.span.min)/args.span.len)
+    let size = [cell[0]*data.length+cell_margin*(data.length-1)+margin*2,cell[1]*(histogramelmlen+2)+cell_margin*6+margin*3]
+    let cell_radius = 0.01;
+    console.log(size)
+    svgelm.setAttributeNS(null,"width",size[0])
+    svgelm.setAttributeNS(null,"height",size[1])
+    {
+        let background = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        background.setAttributeNS(null,"fill",`rgb(0,0,0)`)
+        background.setAttributeNS(null,"x",0);
+        background.setAttributeNS(null,"y",0);
+        background.setAttributeNS(null,"width",size[0]);
+        background.setAttributeNS(null,"height",size[1]);
+        svgelm.appendChild(background);
+    }
+    let main = document.createElementNS("http://www.w3.org/2000/svg","g");
+    svgelm.appendChild(main);
+    for (let i in data) {
+        let periodelm = document.createElementNS("http://www.w3.org/2000/svg","g");
+        main.appendChild(periodelm);
+        let period = data[i];
+        let histogramdata = getHistogramdata(period,args.span)
+        for (let j=0;j<histogramdata.length;j++) {
+            let histogramelm = document.createElementNS("http://www.w3.org/2000/svg","rect");
+            histogramelm.setAttributeNS(null,"fill",`rgb(${histogramdata[j]**3},${histogramdata[j]*100},${histogramdata[j]**2}`)
+            histogramelm.setAttributeNS(null,"x",i*cell[0]+i*cell_margin+margin)
+            histogramelm.setAttributeNS(null,"y",size[1]-(j*cell[1]+j*cell_margin+margin*2))
+            histogramelm.setAttributeNS(null,"rx",cell_radius)
+            histogramelm.setAttributeNS(null,"ry",cell_radius)
+            histogramelm.setAttributeNS(null,"width",cell[0])
+            histogramelm.setAttributeNS(null,"height",cell[1])
+            periodelm.appendChild(histogramelm);
+        }
+    }
+    return size;
+}
+
+function getdata_timeelapsed(data_g1,N=14) {
+    // console.log(data_g1)
+    let ddata = data_g1[0];
+    let res = [];
+    //console.log(res)
+    for (let i=N-1;i<ddata.length;i++) {
+        let period = [];
+        for (let c=0;c<N;c++) {
+            period.push(ddata[i-c])
+        }
+        res.push(period)
+    }
+   // console.table(res)
+    return res
+}
+
+function getdata_g1() {
+    let subjects = [];
+    let res = [];
+    let st = data.replace(/\r/g,"").split("\n");
+    for (let a of st) {
+        let sa = a.split(",");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjects.indexOf(subjectname)==-1) {
+                subjects.push(subjectname);
+            }
+        }
+    }
+    console.log(subjects)
+    for (let a of st) {
+        let sa = a.split(",");
+        let value = 0;
+        let det = Array(subjects.length).fill(0);
+        let day_ = sa[0].replace(/\./g,"-");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+
+            let timed = sa[i].slice(2).split(" ")[0];
+            let range=0;
+            if (timed[0]=="[") {
+                for (let timed_ of timed.slice(1,-1).split("|")) {
+                    let startend = timed_.split("~");
+                    range += (Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60;
+                    //console.log(timed_,(Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60)
+                }
+            }
+            else { range = Number(timed); }
+
+            value += range;
+            det[ subjects.indexOf(subjectname) ] += range;
+        }
+        res.push([Date.parse(day_),value,det]);
+    }
+    console.log("day")
+    console.table(res)
+    return [res,subjects];
+}
+function getHistogramdata(ddata,span) {
+    if(span.len<0.01) {throw `invalid length`}
+    if(span.max<span.min) {throw `invalid span`}
+    // console.log(data_g1)
+    let res = Array(Math.ceil((span.max-span.min)/span.len)).fill(0);
+    //console.log(res)
+    for (let i=0;i<ddata.length;i++) {
+        let index = Math.floor(ddata[i][1]/span.len-span.min)
+        if (index>=0&&index<res.length) {
+            res[index]++;
+        }
+    }
+    console.log(res)
+    return res
+}
+</script>
+<style>
+    body {
+        margin: 0;
+        background-color: black;
+    }
+
+    /* #menu {
+        width: 30%;
+        height: 120px;
+        background: rgba(0,0,0,0.7);
+        position: absolute;
+        top: 0;
+    } */
+</style>
