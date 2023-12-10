@@ -55,8 +55,9 @@ async function getSSize() {
     let args = {};
     let gsizes = {"pc":[1920,1080,0.12],"a4":[594*2,420*2,0.09],"pc_":[1080,1920,0.2],"pc3_":[1080*1.5,1920*1.5,0.3],"phone":[1080,2400,0.27],"a4_":[420*2,594*2,0.13],"pcwide":[1920*2,1080,0.12],"pc4":[1920*2,1080*2,0.24]};
     args.data_g1 = getdata_g1();
-    args.gsize = gsizes["pc4"]; // resolution
+    args.gsize = gsizes["pc"]; // resolution
     //args.gsize = gsizes["pc3_"]
+   // args.gsize = gsizes["phone"]
     let mbpspan = [30,100];
     let smaspan = [7,30,100,360];
     showImage_g1(args.data_g1,prepare_mbp(args,mbpspan),prepare_sma(args,smaspan),[...args.gsize,args.gsize[2]*2],document.getElementById(`output`));
@@ -241,8 +242,8 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
         let path = document.createElementNS("http://www.w3.org/2000/svg","path");
         path.setAttributeNS(null,"d",patht);
         path.setAttributeNS(null,"fill","none");
-        path.setAttributeNS(null,"stroke",`rgb(70,80,80)`);
-        path.setAttributeNS(null,"stroke-width",(i*line_span%10)==0 ? ( ((i*line_span%60)==0 ? 5 : 2) ) : 1);
+        path.setAttributeNS(null,"stroke",(i*line_span%10)==0 ? ( ((i*line_span%60)==0 ? `rgba(210,210,250,0.6)` : `rgba(210,210,250,0.4)`) ) : `rgba(210,210,250,0.3)`);
+        path.setAttributeNS(null,"stroke-width",(i*line_span%10)==0 ? ( ((i*line_span%60)==0 ? 3 : 2) ) : 1);
         group2.appendChild(path);
     }
     // mbpliteの描画
@@ -311,7 +312,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 path.setAttributeNS(null,"d",patht);
                 path.setAttributeNS(null,"fill","none");
                 path.setAttributeNS(null,"stroke",`rgb(200,0,0)`);
-                path.setAttributeNS(null,"stroke-width",`4`);
+                path.setAttributeNS(null,"stroke-width",`3`);
                 group7.appendChild(path);
             }
             let bf = [0];
@@ -329,10 +330,10 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 let circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
                 circle.setAttributeNS(null,"cx",(data[i][0]-data[0][0]+3600*12*1000)*prop[0]/tspan);
                 circle.setAttributeNS(null,"cy",prop[1]-((data[i][1]-minvalue)*10*scale +1));
-                circle.setAttributeNS(null,"r",3);
+                circle.setAttributeNS(null,"r",2);
                 circle.setAttributeNS(null,"fill",`rgb(100,200,100)`);
                 circle.setAttributeNS(null,"stroke",`rgb(200,100,100)`);
-                circle.setAttributeNS(null,"stroke-width",2);
+                circle.setAttributeNS(null,"stroke-width",1);
                 group7.appendChild(circle)
             }
         }
@@ -433,7 +434,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 path.setAttributeNS(null,"fill","none");
                     if (i>n) { path.setAttributeNS(null,"stroke",`rgb(10,180,${255-n*5})`); }
                     else { path.setAttributeNS(null,"stroke",`rgb(10,100,0)`); }
-                path.setAttributeNS(null,"stroke-width",`4`);
+                path.setAttributeNS(null,"stroke-width",`2`);
                 group3.appendChild(path);
             }
             {
@@ -443,7 +444,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 path.setAttributeNS(null,"fill","none");
                     if (i>n) { path.setAttributeNS(null,"stroke",`rgb(150,180,${255-n*5})`); }
                     else { path.setAttributeNS(null,"stroke",`rgb(100,100,0)`); }
-                path.setAttributeNS(null,"stroke-width",`5`);
+                path.setAttributeNS(null,"stroke-width",`3`);
                 group3.appendChild(path);
             }
             {
@@ -453,7 +454,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 path.setAttributeNS(null,"fill","none");
                     if (i>n) { path.setAttributeNS(null,"stroke",`rgb(10,180,${255-n*5})`); }
                     else { path.setAttributeNS(null,"stroke",`rgb(10,100,150)`); }
-                path.setAttributeNS(null,"stroke-width",`4`);
+                path.setAttributeNS(null,"stroke-width",`2`);
                 group3.appendChild(path);
             }
         }
@@ -477,7 +478,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 let path = document.createElementNS("http://www.w3.org/2000/svg","path");
                 path.setAttributeNS(null,"d",patht);
                 path.setAttributeNS(null,"fill","none");
-                path.setAttributeNS(null,"stroke-width",`10`);
+                path.setAttributeNS(null,"stroke-width",`5`);
                 if (i>n) { path.setAttributeNS(null,"stroke",`rgb(0,50,100)`); }
                 group5.appendChild(path);
             }
@@ -488,7 +489,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
                 let path = document.createElementNS("http://www.w3.org/2000/svg","path");
                 path.setAttributeNS(null,"d",patht);
                 path.setAttributeNS(null,"fill","none");
-                path.setAttributeNS(null,"stroke-width",`6`);
+                path.setAttributeNS(null,"stroke-width",`3`);
                 if (i>n) { path.setAttributeNS(null,"stroke",`rgb(0,${255+60-Math.log(n/2)*70},255)`); }
                 else { path.setAttributeNS(null,"stroke",`rgba(10,10,${5-Math.log(n)*0.5},0.5)`); }
                 group5.appendChild(path);
@@ -510,7 +511,7 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
         label.innerHTML = `${i*2}分`
         svgelm.appendChild(label);
     }
-    for (let i=20;i<data.length;i+=Math.floor(20000/prop[0])+1) {
+    for (let i=20;i<data.length;i+=Math.floor(40000/prop[0])+1) {
         let date = new Date(data[i][0])
         let label = document.createElementNS("http://www.w3.org/2000/svg","text");
         label.setAttributeNS(null,"x",(data[i][0]-data[0][0])*prop[0]/tspan);

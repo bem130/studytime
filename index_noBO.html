@@ -33,7 +33,7 @@ async function getSSize() {
     document.getElementById("graph2").src = showImage_g1(getdata_g5(data_g1,10),[...gsizes[gsize],0.5]);
     document.getElementById("graph3").src = showImage_g1(getdata_g2(data_g1,14),[...gsizes[gsize],0.5]);
     document.getElementById("graph4").src = showImage_g1(data_g3,[...gsizes[gsize],0.09]);
-    document.getElementById("graph5").src = showImage_g4(getdata_g4(data_g1),[...gsizes[gsize],0.005]);
+    document.getElementById("graph5").src = showImage_g4(getdata_g4(data_g1),[...gsizes[gsize],0.004]);
     document.getElementById("table1").appendChild(maketable_g3(data_g3));
     document.getElementById("table2").appendChild(maketable_g1(data_g1));
 }
@@ -107,7 +107,7 @@ function showImage_g0(sdata,prop) {
     let minvalue = 0;
     canvas_elm.width = prop[0];
     canvas_elm.height = prop[1];
-    let tspan = data[data.length-1][0]-data[0][0];
+    let tspan = data[data.length-1][0]-data[0][0]+24*3600*1000;
     let scale = prop[2];
     let ddata = Array(data.length).map(()=>{return [0,0]})
     for (let i=0;i<data.length;i++) {
@@ -179,7 +179,7 @@ function showImage_g1(sdata,prop) {
     let minvalue = 0;
     canvas_elm.width = prop[0];
     canvas_elm.height = prop[1];
-    let tspan = data[data.length-1][0]-data[0][0];
+    let tspan = data[data.length-1][0]-data[0][0]+24*3600*1000;
     let scale = prop[2];
     let ddata = Array(data.length).map(()=>{return [0,0]})
     for (let i=0;i<data.length;i++) {
