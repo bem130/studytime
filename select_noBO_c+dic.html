@@ -101,7 +101,10 @@ function getdata_g1() {
         let day_ = sa[0].replace(/\./g,"-");
         for (let i=1;i<sa.length;i++) {
             let subjectname = sa[i].slice(0,2);
-            if (subjectname=="睡眠"||subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+            //if (subjectname=="睡眠"||subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+            if (!(subjectname=="読書"&&sa[i].slice(2).split(" ").slice(1).includes("辞書"))) { // 辞書 の読書は特例
+                if (subjectname=="睡眠"||subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+            }
 
             let timed = sa[i].slice(2).split(" ")[0];
             let range=0;

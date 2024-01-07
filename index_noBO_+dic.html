@@ -13,7 +13,8 @@
             <img id="graph4"></img>
             <img id="graph5"></img>
             <img id="graph6"></img>
-            <div id="table3"></div>
+            <div id="table1"></div>
+            <div id="table2"></div>
         </div>
     </body>
 </html>
@@ -23,7 +24,7 @@ let data = "";
 async function getSSize() {
     articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
     data = await articleRes.text();
-    let gsizes = {"pc":[1920,1080],"a4":[297*5,210*5]}
+    let gsizes = {"pc":[1920,1080],"a4":[297*5,210*5],"pc_":[1920*0.7,1080*1.8]}
     gsize = "pc"
     let data_g1 = getdata_g1();
     let data_g3 = getdata_g3(data_g1);
@@ -31,9 +32,10 @@ async function getSSize() {
     document.getElementById("graph1").src = showImage_g1(data_g1,[...gsizes[gsize],0.24]);
     document.getElementById("graph2").src = showImage_g1(getdata_g5(data_g1,10),[...gsizes[gsize],0.5]);
     document.getElementById("graph3").src = showImage_g1(getdata_g2(data_g1,14),[...gsizes[gsize],0.5]);
-    document.getElementById("graph4").src = showImage_g1(data_g3,[...gsizes[gsize],0.09]);
-    document.getElementById("graph5").src = showImage_g4(getdata_g4(data_g1),[...gsizes[gsize],0.003]);
-    document.getElementById("table3").appendChild(maketable_g3(data_g3));
+    document.getElementById("graph4").src = showImage_g1(data_g3,[...gsizes[gsize],0.077]);
+    document.getElementById("graph5").src = showImage_g4(getdata_g4(data_g1),[...gsizes[gsize],0.004]);
+    document.getElementById("table1").appendChild(maketable_g3(data_g3));
+    document.getElementById("table2").appendChild(maketable_g1(data_g1));
 }
 getSSize();
 
@@ -54,7 +56,7 @@ function lsmline(d) {// 参考 https://ja.wikipedia.org/wiki/%E6%9C%80%E5%B0%8F%
 
 
 function getdata_g1() {
-    let subjects = [];
+    let subjects = ["数学","英語","国語"];
     let res = [];
     let st = data.replace(/\r/g,"").split("\n");
     for (let a of st) {
@@ -73,9 +75,14 @@ function getdata_g1() {
         let det = Array(subjects.length).fill(0);
         let day_ = sa[0].replace(/\./g,"-");
         for (let i=1;i<sa.length;i++) {
+            let attribute = sa[i].slice(2).split(" ")
+            //console.log("attribute",attribute.slice(1));
             let subjectname = sa[i].slice(0,2);
+            if (!(subjectname=="読書"&&attribute.includes("辞書"))) { // 辞書 の読書は特例
+                if (subjectname=="睡眠"||subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+            }
 
-            let timed = sa[i].slice(2).split(" ")[0];
+            let timed = attribute[0];
             let range=0;
             if (timed[0]=="[") {
                 for (let timed_ of timed.slice(1,-1).split("|")) {
@@ -95,8 +102,7 @@ function getdata_g1() {
     console.table(res)
     return [res,subjects];
 }
-    let colors = [ [0,255,0],[255,0,0],[0,0,255],[255,255,180],[176,255,255],[255,240,255],[255,230,245] ,[210,250,150],[200,250,210],[230,230,238],[250,229,200],[210,190,230],[176,230,217],[200,245,255],[213,220,210],[200,250,200],[220,195,235],[198,215,242],[230,223,350],[0,0,0],[255,255,255],[255,255,250],[245,255,240]]
-
+let colors = [[0,255,0],[255,0,0],[0,0,255],[255,255,180],[176,255,255],[255,240,255],[255,230,245] ,[210,250,150],[200,250,210],[230,230,238],[250,229,200],[210,190,230],[176,230,217],[200,245,255],[213,220,210],[200,250,200],[220,195,235],[198,215,242],[230,223,350],[0,0,0],[255,255,255],[255,255,250],[245,255,240],[205,150,100]]
 function showImage_g0(sdata,prop) {
     let canvas_elm = document.createElement("canvas");
     let ctx = canvas_elm.getContext("2d");
@@ -105,7 +111,7 @@ function showImage_g0(sdata,prop) {
     let minvalue = 0;
     canvas_elm.width = prop[0];
     canvas_elm.height = prop[1];
-    let tspan = data[data.length-1][0]-data[0][0];
+    let tspan = data[data.length-1][0]-data[0][0]+24*3600*1000;
     let scale = prop[2];
     let ddata = Array(data.length).map(()=>{return [0,0]})
     for (let i=0;i<data.length;i++) {
@@ -177,7 +183,7 @@ function showImage_g1(sdata,prop) {
     let minvalue = 0;
     canvas_elm.width = prop[0];
     canvas_elm.height = prop[1];
-    let tspan = data[data.length-1][0]-data[0][0];
+    let tspan = data[data.length-1][0]-data[0][0]+24*3600*1000;
     let scale = prop[2];
     let ddata = Array(data.length).map(()=>{return [0,0]})
     for (let i=0;i<data.length;i++) {
@@ -544,21 +550,66 @@ function getdata_g4(data_g1) {
     return [res,subjects]
 }
 
+function maketable_g1(data,size) {
+    console.log(data)
+    let tableelm = document.createElement("table");
+    tableelm.cellSpacing = 0;
+    if (size!=null) {
+        tableelm.style.width = size[0]+"px";
+        tableelm.style.height = size[1]+"px";
+    }
+    let thead = document.createElement("thead");
+    let theadtr = document.createElement("tr");
+    let th1 = document.createElement("th");
+    th1.innerText = "日";
+    theadtr.appendChild(th1);
+    let th2 = document.createElement("th");
+    th2.innerText = "合計";
+    theadtr.appendChild(th2);
+    for (let s=0;s<data[1].length;s++) {
+        let th = document.createElement("th");
+        th.innerText = data[1][s];
+        theadtr.appendChild(th);
+    }
+    thead.appendChild(theadtr);
+    tableelm.appendChild(thead);
+    let tbody = document.createElement("tbody");
+    for (let i=data[0].length-1;i>=0;i--) {
+        let tr = document.createElement("tr");
+        console.log(data[0][i])
+        let td1 = document.createElement("td");
+        td1.innerText = new Date(data[0][i][0]).toLocaleString('ja-JP',{year:"numeric",month:"2-digit",day:"2-digit"});
+        tr.appendChild(td1);
+        let td2 = document.createElement("td");
+        td2.innerText = data[0][i][1];
+        tr.appendChild(td2);
+        for (let s=0;s<data[1].length;s++) {
+            let td = document.createElement("td");
+            td.innerText = data[0][i][2][s];
+            tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+    }
+    tableelm.appendChild(tbody);
+    console.log(data)
+    return tableelm;
+}
+
 </script>
 <style>
     body {
         margin: 0;
     }
-    #table3 {
+    table {
         border: 1px solid black;
         width: fit-content;
         margin: 5px;
     }
-    #table3 th, #table3 td {
+    table th, table td {
         padding: 1px;
         border: 1px solid rgb(210, 210, 210);
     }
-    #table3 th {
+    table th {
         border-bottom: 1px solid black;
     }
 </style>
