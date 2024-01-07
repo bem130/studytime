@@ -34,6 +34,7 @@ async function getSSize() {
     document.getElementById("graph3").src = showImage_g1(getdata_g2(data_g1,14),[...gsizes[gsize],0.5]);
     document.getElementById("graph4").src = showImage_g1(data_g3,[...gsizes[gsize],0.077]);
     document.getElementById("graph5").src = showImage_g4(getdata_g4(data_g1),[...gsizes[gsize],0.004]);
+    document.getElementById("graph6").src = showImage_g5(getdata_g4(data_g1),[...gsizes[gsize],0.012]);
     document.getElementById("table1").appendChild(maketable_g3(data_g3));
     document.getElementById("table2").appendChild(maketable_g1(data_g1));
 }
@@ -327,6 +328,65 @@ function showImage_g4(sdata,prop) {
         ctx.moveTo((data[i-1][0]-data[0][0])*canvas_elm.width/tspan,canvas_elm.height-((data[i-1][1]-minvalue)*10*scale));
         ctx.lineTo((data[i][0]-data[0][0])*canvas_elm.width/tspan,canvas_elm.height-((data[i][1]-minvalue)*10*scale));
         ctx.stroke();
+    }
+    return canvas_elm.toDataURL();
+}
+function showImage_g5(sdata,prop) {
+    let canvas_elm = document.createElement("canvas");
+    let ctx = canvas_elm.getContext("2d");
+    let data = sdata[0];
+    let subjects = sdata[1];
+    let minvalue = 0;
+    canvas_elm.width = prop[0];
+    canvas_elm.height = prop[1];
+    let tspan = data[data.length-1][0]-data[0][0];
+    let scale = prop[2];
+    let ddata = Array(data.length).map(()=>{return [0,0]})
+    for (let i=0;i<data.length;i++) {
+        ddata[i] = [(data[i][0]-data[0][0])*canvas_elm.width/tspan,canvas_elm.height-((data[i][1]-minvalue)*10*scale)];
+    }
+    //
+    for (let i=1;i<data.length;i++) {
+        let date = new Date(data[i-1][0])
+        ctx.fillStyle = `rgb(${((date.getMonth())%3)*30+((date.getDay()+6)%7)*30+10},${((date.getMonth())%3)*20+200},${((date.getMonth())%2)*40+200})`;
+        ctx.beginPath();
+        ctx.rect((data[i-1][0]-data[0][0]-(data[i][0]-data[i-1][0])/2)*canvas_elm.width/tspan,20,data[i][0]-data[i-1][0],prop[1]-20);
+        ctx.fill();
+        ctx.fillStyle = `rgb(${(date.getFullYear()%3)*100+50},${(date.getFullYear()%4)*50+50},${(date.getFullYear()%2)*200+50})`;
+        ctx.beginPath();
+        ctx.rect((data[i-1][0]-data[0][0]-(data[i][0]-data[i-1][0])/2)*canvas_elm.width/tspan,0,data[i][0]-data[i-1][0],10);
+        ctx.fill();
+    }
+    // 掛線の描画
+    ctx.strokeStyle = "rgb(240,250,250)";
+    let line_span = 60*10;
+    for (let i=0;(i*line_span)*10*scale<canvas_elm.height;i+=1) {
+        ctx.lineWidth = (i*line_span%(60*50))==0 ? ((i*line_span%(60*100))==0 ? 5 : 2) : 1;
+        ctx.beginPath();
+        ctx.moveTo(0,canvas_elm.height-((i*line_span)*10*scale));
+        ctx.lineTo(canvas_elm.width,canvas_elm.height-((i*line_span)*10*scale));
+        ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgb(200,200,230)";
+    for (let i=1;i<data.length;i++) {
+        ctx.beginPath();
+        ctx.moveTo((data[i][0]-data[0][0])*canvas_elm.width/tspan,0);
+        ctx.lineTo((data[i][0]-data[0][0])*canvas_elm.width/tspan,canvas_elm.height);
+        ctx.stroke();
+    }
+    // データの描画
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = "rgb(0,0,0)";
+    for (let i=1;i<data.length;i++) {
+        for (let s=0;s<subjects.length;s++) {
+            ctx.strokeStyle = `rgb(${colors[s][0]},${colors[s][1]},${colors[s][2]})`;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo((data[i][0]-data[0][0])*canvas_elm.width/tspan,canvas_elm.height-((data[i][2][s]-minvalue)*10*scale));
+            ctx.lineTo((data[i-1][0]-data[0][0])*canvas_elm.width/tspan,canvas_elm.height-((data[i-1][2][s]-minvalue)*10*scale));
+            ctx.stroke();
+        }
     }
     return canvas_elm.toDataURL();
 }
