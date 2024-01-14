@@ -1,0 +1,229 @@
+<!-- bem130 -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <div id="graphes">
+            <img id="graph1"></img>
+        </div>
+        <div>
+            <input id="smaperiod" type="number" value="30" min="1" max="500" onchange="update()">
+        </div>
+    </body>
+</html>
+<script>
+let data;
+let data_g1;
+
+async function init() {
+    articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
+    data = await articleRes.text();
+    data_g1 = getdata_g1();
+    update()
+}
+init();
+
+function update() {
+    let smaperiod = Math.max(Math.min(Math.floor(Number(document.getElementById("smaperiod").value)),500),1);
+    document.getElementById("graph1").src = showImage_cycle(getdata_g2(data_g1,smaperiod),data_g1,smaperiod);
+}
+
+
+
+function getdata_g1() {
+    let subjects = ["数学","英語","国語"];
+    let res = [];
+    let st = data.replace(/\r/g,"").split("\n");
+    for (let a of st) {
+        let sa = a.split(",");
+        for (let i=1;i<sa.length;i++) {
+            let subjectname = sa[i].slice(0,2);
+            if (subjects.indexOf(subjectname)==-1) {
+                subjects.push(subjectname);
+            }
+        }
+    }
+    console.log(subjects)
+    for (let a of st) {
+        let sa = a.split(",");
+        let value = 0;
+        let det = Array(subjects.length).fill(0);
+        let day_ = sa[0].replace(/\./g,"-");
+        for (let i=1;i<sa.length;i++) {
+            let attribute = sa[i].slice(2).split(" ")
+            //console.log("attribute",attribute.slice(1));
+            let subjectname = sa[i].slice(0,2);
+            if (!(subjectname=="読書"&&attribute.includes("辞書"))) { // 辞書 の読書は特例
+                if (subjectname=="睡眠"||subjectname=="OC"||subjectname=="読書"||subjectname=="補習"||subjectname=="其他") {continue}
+            }
+
+            let timed = attribute[0];
+            let range=0;
+            if (timed[0]=="[") {
+                for (let timed_ of timed.slice(1,-1).split("|")) {
+                    let startend = timed_.split("~");
+                    range += (Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60;
+                    //console.log(timed_,(Date.parse(day_+" "+startend[1]) - Date.parse(day_+" "+startend[0])) /1000/60)
+                }
+            }
+            else { range = Number(timed); }
+
+            value += range;
+            det[ subjects.indexOf(subjectname) ] += range;
+        }
+        res.push([Date.parse(day_),value,det]);
+    }
+    console.log("day")
+    console.table(res)
+    return [res,subjects];
+}
+
+function getdata_g2(data_g1,N=14) { // 単純移動平均
+    console.log(data_g1)
+    let subjects = data_g1[1];
+    let ddata = data_g1[0];
+    let res = Array(ddata.length-N).fill(null).map(()=>{return [null,0,Array(subjects.length).fill(0)]});
+    console.log(res)
+    for (let i=N;i<ddata.length;i++) {
+        res[i-N][0] = ddata[i][0];
+        for (let c=0;c<N;c++) {
+            for (let s=0;s<subjects.length;s++) {
+                res[i-N][2][s] += ddata[i-c][2][s];
+            }
+            res[i-N][1] += ddata[i-c][1];
+        }
+        for (let s=0;s<subjects.length;s++) {
+            res[i-N][2][s] /= N;
+        }
+        res[i-N][1] /= N;
+    }
+    console.table(res)
+    return [res,subjects]
+}
+
+function showImage_cycle(sdata,raw,smaperiod) {
+    let imsize = [1080,2400];
+    let scale = 3;
+    let origin = [imsize[0]/2,imsize[1]/2];
+    let zerolevel = 250;
+
+    let canvas_elm = document.createElement("canvas");
+    let ctx = canvas_elm.getContext("2d");
+    let data = sdata[0];
+    canvas_elm.width = imsize[0];
+    canvas_elm.height = imsize[1];
+
+    // 背景
+    ctx.fillStyle = `rgb(0,0,0)`;
+    ctx.beginPath();
+    ctx.rect(0,0,imsize[0],imsize[1]);
+    ctx.fill();
+    // 中心円
+    ctx.fillStyle = `rgb(10,30,50)`;
+    ctx.beginPath();
+    ctx.arc(...origin, zerolevel, 0, 2*Math.PI);
+    ctx.fill();
+    // 目盛
+    const max = 180
+    for (let i=0;i<=max;i+=10) { // 同心円
+        ctx.strokeStyle = `rgba(255,255,255,${(i%60==0)?0.9:0.4})`;
+        ctx.lineWidth = (i%60==0)?2:1
+        ctx.beginPath();
+        ctx.arc(...origin, i*scale+zerolevel, 0, 2*Math.PI);
+        ctx.stroke();
+        if (i%30==0) {
+            ctx.fillStyle = `rgb(200,250,255)`;
+            ctx.font = "17px serif";
+            ctx.textAlign = "left";
+            ctx.fillText(i+"分",i*scale+zerolevel+origin[0],imsize[1]/2)
+        }
+    }
+    for (let m=0;m<12;m++) {
+        let inner = θr2xy(m/12*2*Math.PI,zerolevel-20,origin);
+        let outer = θr2xy(m/12*2*Math.PI,max*scale+zerolevel,origin);
+        ctx.beginPath();
+        ctx.moveTo(...inner);
+        ctx.lineTo(...outer);
+        ctx.stroke();
+        {
+            let label = θr2xy((m+0.5)/12*2*Math.PI,zerolevel-30,origin);
+            ctx.fillStyle = `rgb(200,250,255)`;
+            ctx.font = "17px serif";
+            ctx.textAlign = "center";
+            ctx.fillText((m+1)+"月",...label);
+        }
+    }
+    // データの描画
+    ctx.lineWidth = 3;
+    for (let i=0;i<data.length-1;i++) {
+        let bf = [0,0];
+        ctx.strokeStyle = `rgb(200,200,200)`;
+        let p1 = θr2xy(date2θ(data[i][0]),  data[i][1]*scale+zerolevel  ,origin);
+        let p2 = θr2xy(date2θ(data[i+1][0]),data[i+1][1]*scale+zerolevel,origin);
+        ctx.beginPath();
+        ctx.moveTo(...p1);
+        ctx.lineTo(...p2);
+        ctx.stroke();
+        ctx.fillStyle = `hsl(${i*0.2},100%,50%)`;
+        ctx.beginPath();
+        ctx.arc(...p1, 2, 0, 2 * Math.PI);
+        ctx.fill();
+    }{
+        let p1 = θr2xy(date2θ(data[data.length-1][0]),data[data.length-1][1]*scale+zerolevel,origin);
+        ctx.beginPath();
+        ctx.arc(...p1, 2, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    // タイトル
+    {
+        ctx.fillStyle = `rgb(255,255,255)`;
+        ctx.textAlign = "center";
+        {
+            ctx.font = "40px serif";
+            ctx.fillText("Bem130 Study Time",origin[0],origin[1]-50);   
+        }
+        {
+            ctx.font = "25px serif";
+            let spanText = `${new Date(raw[0][0][0]).toLocaleDateString("jp")} ~ ${new Date(raw[0][raw[0].length-1][0]).toLocaleDateString("jp")}`;
+            ctx.fillText(spanText,origin[0],origin[1]+20);   
+        }
+        {
+            ctx.font = "25px serif";
+            let spanText = `${raw[0].length} days`;
+            ctx.fillText(spanText,origin[0],origin[1]+50);   
+        }
+        {
+            ctx.font = "25px serif";
+            let spanText = `SMA ${smaperiod} days, Cycle`;
+            ctx.fillText(spanText,origin[0],origin[1]+130);   
+        }
+    }
+
+    return canvas_elm.toDataURL();
+}
+
+function date2θ(date) {
+    const now = new Date(date);
+    const year = now.getFullYear();
+    const start = new Date(Date.parse(year));
+    const end = new Date(Date.parse(year+1));
+    const ratio = (now-start)/(end-start);
+    const θ = 2*Math.PI*ratio;
+    return θ;
+}
+
+function θr2xy(θ,r,origin) {
+    return [r*Math.sin(θ)+origin[0],-r*Math.cos(θ)+origin[1]];
+}
+
+
+</script>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+    }
+</style>
