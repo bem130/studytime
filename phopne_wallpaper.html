@@ -27,7 +27,7 @@ init();
 
 function update() {
     let smaperiod = Math.max(Math.min(Math.floor(Number(document.getElementById("smaperiod").value)),500),1);
-    document.getElementById("graph1").src = showImage_cycle(getdata_g2(data_g1,smaperiod),data_g1,smaperiod);
+    document.getElementById("graph1").src = showImage_phone(getdata_g2(data_g1,smaperiod),data_g1,smaperiod,getdata_info(data_g1));
 }
 
 
@@ -103,7 +103,38 @@ function getdata_g2(data_g1,N=14) { // 単純移動平均
     return [res,subjects]
 }
 
-function showImage_cycle(sdata,raw,smaperiod) {
+
+function getdata_info(data_g1) {
+    let arr = data_g1[0].map(x=>{return x[1]});
+    let sum = arr.reduce((s,e)=>{return s+e;});
+    let avr = sum/data_g1[0].length;
+    let quartile = getQuartile(arr);
+    return {sum:sum,avr:avr,quartile:quartile};
+}
+
+function getQuartile(arr) {
+    let sorted = arr.map((x)=>{return x;}).sort((a,b)=>{return a-b;}); // sort array
+    let median = function(x) {
+        if(x.length%2==0){
+            return (x[x.length/2-1]+x[x.length/2])/2;
+        }else{
+            return x[(x.length-1)/2]
+        }
+    }
+    let quartile = function(x) { // require sorted array
+        let ret = Array(5);
+        ret[0] = x[0];
+        ret[4] = x[x.length-1];
+        ret[2] = median(x);
+        ret[1] = median( x.filter((x)=>{return x<ret[2]}) )
+        ret[3] = median( x.filter((x)=>{return x>ret[2]}) )
+        return ret;
+    }
+    return quartile(sorted);
+}
+
+function showImage_phone(sdata,raw,smaperiod,info) {
+    console.log(info)
     let imsize = [1080,2400];
     let scale = 3;
     let origin = [imsize[0]/2,imsize[1]/2];
@@ -183,26 +214,57 @@ function showImage_cycle(sdata,raw,smaperiod) {
         ctx.textAlign = "center";
         {
             ctx.font = "40px serif";
-            ctx.fillText("Bem130 Study Time",origin[0],origin[1]-50);   
+            ctx.fillText("Bem130 Study Time",origin[0],origin[1]-50);
         }
         {
             ctx.font = "25px serif";
             let spanText = `${new Date(raw[0][0][0]).toLocaleDateString("jp")} ~ ${new Date(raw[0][raw[0].length-1][0]).toLocaleDateString("jp")}`;
-            ctx.fillText(spanText,origin[0],origin[1]+20);   
+            ctx.fillText(spanText,origin[0],origin[1]+20);
         }
         {
             ctx.font = "25px serif";
             let spanText = `${raw[0].length} days`;
-            ctx.fillText(spanText,origin[0],origin[1]+50);   
+            ctx.fillText(spanText,origin[0],origin[1]+50);
         }
         {
             ctx.font = "25px serif";
             let spanText = `SMA ${smaperiod} days, Cycle`;
-            ctx.fillText(spanText,origin[0],origin[1]+130);   
+            ctx.fillText(spanText,origin[0],origin[1]+130);
+        }
+    }
+    
+    // info
+    {
+        let infodata = [
+            ["Sum",`${round(info.sum)} min / ${round(info.sum/60)} hr`],
+            ["Avr",`${round(info.avr)} min`],
+            [],
+            ["Min",`${round(info.quartile[0])} min`],
+            ["Q1",`${round(info.quartile[1])} min`],
+            ["Med",`${round(info.quartile[2])} min`],
+            ["Q3",`${round(info.quartile[3])} min`],
+            ["Max",`${round(info.quartile[4])} min`],
+        ];
+        let width = [100,200];
+        let height = 30;
+        let x = 80
+        let y = 2050
+        for (let i in infodata) {
+            let _x = x;
+            for (let j in infodata[i]) {
+                ctx.font = "25px serif";
+                ctx.textAlign = "left";
+                ctx.fillText(infodata[i][j],_x,y+height*i);
+                _x += width[j];
+            }
         }
     }
 
     return canvas_elm.toDataURL();
+}
+
+function round(x) {
+    return Math.round(x*100)/100;
 }
 
 function date2θ(date) {
