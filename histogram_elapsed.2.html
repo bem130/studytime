@@ -52,8 +52,8 @@ function output(res) {
 async function getSSize() {
     articleRes = await fetch(`bem130.studytime.csv`, {method: "GET",headers: {"Catch-Control": "max-age=3600"}});
     data = await articleRes.text();
-    let data_elapsed = getdata_timeelapsed(getdata_g1(),30);
-    let args = {span:{min:0,max:460,len:10}};
+    let data_elapsed = getdata_timeelapsed(getdata_g1(),60);
+    let args = {span:{min:0,max:460,len:20}};
     let size = showImage(data_elapsed,document.getElementById("output"),args);
     output(size);
 }
@@ -61,8 +61,9 @@ getSSize();
 
 function showImage(data,svgelm,args) {
     let margin = 10;
-    let cell = [2,10];
-    let cell_margin = 1;
+    let cell = [0.5,12];
+    let cell_margin = 0;
+    let weight = 2;
     let histogramelmlen = Math.ceil((args.span.max-args.span.min)/args.span.len)
     let size = [cell[0]*data.length+cell_margin*(data.length-1)+margin*2,cell[1]*(histogramelmlen+2)+cell_margin*6+margin*3]
     let cell_radius = 0.01;
@@ -80,20 +81,20 @@ function showImage(data,svgelm,args) {
     }
     let main = document.createElementNS("http://www.w3.org/2000/svg","g");
     svgelm.appendChild(main);
-    for (let i in data) {
+    for (let i=0;i<data.length-1;i++) {
         let periodelm = document.createElementNS("http://www.w3.org/2000/svg","g");
         main.appendChild(periodelm);
-        let period = data[i];
-        let histogramdata = getHistogramdata(period,args.span)
+        let histogramdata = getHistogramdata(data[i],args.span);
         for (let j=0;j<histogramdata.length;j++) {
-            let histogramelm = document.createElementNS("http://www.w3.org/2000/svg","rect");
-            histogramelm.setAttributeNS(null,"fill",`rgb(${histogramdata[j]**3},${histogramdata[j]*100},${histogramdata[j]**2}`)
-            histogramelm.setAttributeNS(null,"x",i*cell[0]+i*cell_margin+margin)
-            histogramelm.setAttributeNS(null,"y",size[1]-(j*cell[1]+j*cell_margin+margin*2))
-            histogramelm.setAttributeNS(null,"rx",cell_radius)
-            histogramelm.setAttributeNS(null,"ry",cell_radius)
-            histogramelm.setAttributeNS(null,"width",cell[0])
-            histogramelm.setAttributeNS(null,"height",cell[1])
+            let x = i*cell[0]+i*cell_margin+margin;
+            let y_b = size[1]-(j*cell[1]+j*cell_margin+margin*2);
+            let v1 = Math.log(histogramdata[j]+1)*weight;
+            let y1 = y_b - v1;
+
+            let histogramelm = document.createElementNS("http://www.w3.org/2000/svg","path");
+            histogramelm.setAttributeNS(null,"stroke",`rgb(${histogramdata[j]*60},${histogramdata[j]**3},${histogramdata[j]**1.4}`);
+            histogramelm.setAttributeNS(null,"stroke-width",`1`);
+            histogramelm.setAttributeNS(null,"d",`M ${x} ${y1} L ${x} ${y_b}`);
             periodelm.appendChild(histogramelm);
         }
     }
