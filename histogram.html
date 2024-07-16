@@ -55,8 +55,8 @@ async function main() {
     let args = {};
     let gsizes = {"pc":[1920,1080,0.12],"a4":[594*2,420*2,0.09],"pc_":[1080,1920,0.2],"pc3_":[1080*1.5,1920*1.5,0.3],"phone":[1080,2400,0.27],"a4_":[420*2,594*2,0.13],"pcwide":[1920*2,1080,0.12],"pc4":[1920*2,1080*2,0.24]};
     args.data_g1 = getdata_g1();
-    args.gsize = gsizes["a4"]; // resolution
-    args.span = {min:0,max:460,len:10};
+    args.gsize = gsizes["pc_"]; // resolution
+    args.span = {min:0,max:460,len:5};
     //args.gsize = gsizes["pc3_"]
     showImage_g1(getHistogramdata(args.data_g1,args.span),args.span,
                 getQuartile(args.data_g1[0].map(x=>{return x[1]})),

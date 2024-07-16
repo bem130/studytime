@@ -33,8 +33,8 @@ async function getSSize() {
     document.getElementById("graph2").src = showImage_g1(getdata_g5(data_g1,10),[...gsizes[gsize],0.5]);
     document.getElementById("graph3").src = showImage_g1(getdata_g2(data_g1,14),[...gsizes[gsize],0.5]);
     document.getElementById("graph4").src = showImage_g1(data_g3,[...gsizes[gsize],0.077]);
-    document.getElementById("graph5").src = showImage_g4(getdata_g4(data_g1),[...gsizes[gsize],0.004]);
-    document.getElementById("graph6").src = showImage_g5(getdata_g4(data_g1),[...gsizes[gsize],0.01]);
+    document.getElementById("graph5").src = showImage_g4(getdata_g4(data_g1),[...gsizes[gsize],0.003]);
+    document.getElementById("graph6").src = showImage_g5(getdata_g4(data_g1),[...gsizes[gsize],0.007]);
     document.getElementById("table1").appendChild(maketable_g3(data_g3));
     document.getElementById("table2").appendChild(maketable_g1(data_g1));
 }
@@ -408,42 +408,47 @@ function maketable_g3(data,size) {
     th1.innerText = "期間";
     theadtr.appendChild(th1);
     let th2 = document.createElement("th");
-    th2.innerText = "合計";
+    th2.innerText = "合計(m)";
     theadtr.appendChild(th2);
+    let th3 = document.createElement("th");
+    th3.innerText = "合計(h)";
+    theadtr.appendChild(th3);
     for (let s=0;s<data[1].length;s++) {
         let th = document.createElement("th");
         th.innerText = data[1][s];
         theadtr.appendChild(th);
     }
-    let th3 = document.createElement("th");
-    th3.innerText = "順位";
-    theadtr.appendChild(th3);
     let th4 = document.createElement("th");
-    th4.innerText = "同列";
+    th4.innerText = "順位";
     theadtr.appendChild(th4);
+    let th5 = document.createElement("th");
+    th5.innerText = "同列";
+    theadtr.appendChild(th5);
     thead.appendChild(theadtr);
     tableelm.appendChild(thead);
     let tbody = document.createElement("tbody");
     for (let i=data[0].length-1;i>=0;i--) {
         let tr = document.createElement("tr");
-        console.log(data[0][i])
         let td1 = document.createElement("td");
         td1.innerText = [ new Date(data[0][i][3][0]).toLocaleString('ja-JP',{year:"numeric",month:"2-digit",day:"2-digit"}) , new Date(data[0][i][3][data[0][i][3].length-1]).toLocaleString('ja-JP',{month:"2-digit",day:"2-digit"}) ].join(" - ");
         tr.appendChild(td1);
         let td2 = document.createElement("td");
         td2.innerText = data[0][i][1];
         tr.appendChild(td2);
+        let td3 = document.createElement("td");
+        td3.innerText = Math.floor(data[0][i][1]/60*100)/100;
+        tr.appendChild(td3);
         for (let s=0;s<data[1].length;s++) {
             let td = document.createElement("td");
             td.innerText = data[0][i][2][s];
             tr.appendChild(td);
         }
-        let td3 = document.createElement("td");
-        td3.innerText = data[0][i][4][0];
-        tr.appendChild(td3);
         let td4 = document.createElement("td");
-        td4.innerText = data[0][i][4][1];
+        td4.innerText = data[0][i][4][0];
         tr.appendChild(td4);
+        let td5 = document.createElement("td");
+        td5.innerText = data[0][i][4][1];
+        tr.appendChild(td5);
         tbody.appendChild(tr);
     }
     tableelm.appendChild(tbody);
@@ -514,11 +519,9 @@ function getdata_g3(data_g1) {
 }
 
 function getdata_g2(data_g1,N=14) { // 単純移動平均
-    console.log(data_g1)
     let subjects = data_g1[1];
     let ddata = data_g1[0];
     let res = Array(ddata.length).fill(null).map(()=>{return [null,0,Array(subjects.length).fill(0)]});
-    console.log(res)
     for (let i=0;i<N;i++) {
         res[i][0] = ddata[i][0];
         for (let c=0;c<N;c++) {
@@ -624,8 +627,11 @@ function maketable_g1(data,size) {
     th1.innerText = "日";
     theadtr.appendChild(th1);
     let th2 = document.createElement("th");
-    th2.innerText = "合計";
+    th2.innerText = "合計(m)";
     theadtr.appendChild(th2);
+    let th3 = document.createElement("th");
+    th3.innerText = "合計(h)";
+    theadtr.appendChild(th3);
     for (let s=0;s<data[1].length;s++) {
         let th = document.createElement("th");
         th.innerText = data[1][s];
@@ -636,13 +642,15 @@ function maketable_g1(data,size) {
     let tbody = document.createElement("tbody");
     for (let i=data[0].length-1;i>=0;i--) {
         let tr = document.createElement("tr");
-        console.log(data[0][i])
         let td1 = document.createElement("td");
         td1.innerText = new Date(data[0][i][0]).toLocaleString('ja-JP',{year:"numeric",month:"2-digit",day:"2-digit"});
         tr.appendChild(td1);
         let td2 = document.createElement("td");
         td2.innerText = data[0][i][1];
         tr.appendChild(td2);
+        let td3 = document.createElement("td");
+        td3.innerText = Math.floor(data[0][i][1]/60*100)/100;
+        tr.appendChild(td3);
         for (let s=0;s<data[1].length;s++) {
             let td = document.createElement("td");
             td.innerText = data[0][i][2][s];

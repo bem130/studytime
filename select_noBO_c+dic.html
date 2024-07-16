@@ -473,6 +473,8 @@ function showImage_g1(raw,mbp,sma,prop,svgelm,n) {
             group5.setAttributeNS(null,"stroke-linecap",`round`);
         }
         let data = sma[s][0];
+        console.log("sma"+s)
+        console.log(data)
         let n = sma[s][1];
        // group4.setAttributeNS(null,"visibility","hidden");
         for (let i=0;i<data.length-1;i++) {

@@ -136,7 +136,7 @@ function getQuartile(arr) {
 function showImage_phone(sdata,raw,smaperiod,info) {
     console.log(info)
     let imsize = [1080,2400];
-    let scale = 3;
+    let scale = 2;
     let origin = [imsize[0]/2,imsize[1]/2];
     let zerolevel = 250;
 
@@ -157,7 +157,7 @@ function showImage_phone(sdata,raw,smaperiod,info) {
     ctx.arc(...origin, zerolevel, 0, 2*Math.PI);
     ctx.fill();
     // 目盛
-    const max = 180
+    const max = 240
     for (let i=0;i<=max;i+=10) { // 同心円
         ctx.strokeStyle = `rgba(255,255,255,${(i%60==0)?0.9:0.4})`;
         ctx.lineWidth = (i%60==0)?2:1
